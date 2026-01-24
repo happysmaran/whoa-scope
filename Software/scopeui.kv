@@ -2,6 +2,23 @@
 #:import Factory kivy.factory.Factory
 #:import math math
 #:import kivy_resources kivy.resources
+
+# Global font style - applies to all Label widgets
+<Label>:
+    font_name: app.fontname
+
+# Global font style for Button widgets
+<Button>:
+    font_name: app.fontname
+
+# Global font style for ToggleButton widgets
+<ToggleButton>:
+    font_name: app.fontname
+
+# Global font style for Spinner widgets
+<Spinner>:
+    font_name: app.fontname
+
 <ScopeSaveDialog@Popup>:
     text_input: text_input
     file_chooser: file_chooser
@@ -21,7 +38,7 @@
             Label:
                 size_hint_x: 0.15
                 text: '[b]Save As:[/b]'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 markup: True
 
             TextInput:
@@ -41,7 +58,7 @@
 
             Button:
                 text: 'Cancel'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 on_release:
                     root.dismiss()
                     app.root.bind_keyboard()
@@ -49,7 +66,7 @@
 
             Button:
                 text: 'Save'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 on_release:
                     root.dismiss()
                     app.root.bind_keyboard()
@@ -75,7 +92,7 @@
             Label:
                 size_hint_x: 0.15
                 text: '[b]Save As:[/b]'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 markup: True
 
             TextInput:
@@ -95,7 +112,7 @@
 
             Button:
                 text: 'Cancel'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 on_release:
                     root.dismiss()
                     app.root.bind_keyboard()
@@ -103,7 +120,7 @@
 
             Button:
                 text: 'Save'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 on_release:
                     root.dismiss()
                     app.root.bind_keyboard()
@@ -124,14 +141,14 @@
             height: 30
             text: '[b]A file named "' + app.save_dialog_file + '" already exists. Do you want to replace it?[/b]'
             text_size: self.size
-            font_size: app.fontsize
+            font_size: int(18 * app.fontscale)
             markup: True
 
         Label:
             size_hint_y: 0.6
             text: 'The file already exists in "' + app.save_dialog_path + '". Replacing it will overwrite its contents.'
             text_size: self.width, None
-            font_size: app.fontsize
+            font_size: int(18 * app.fontscale)
 
         BoxLayout:
             orientation: 'horizontal'
@@ -140,13 +157,13 @@
 
             Button:
                 text: 'Cancel'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 on_release:
                     root.dismiss()
 
             Button:
                 text: 'Replace'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 on_release:
                     root.dismiss()
                     app.export_waveforms(app.save_dialog_path, app.save_dialog_file, True) if app.root.current == 'scope' else app.export_freqresp(app.save_dialog_path, app.save_dialog_file, True)
@@ -170,7 +187,7 @@
             Label:
                 size_hint_x: 0.15
                 text: '[b]Load From:[/b]'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 markup: True
 
             TextInput:
@@ -190,7 +207,7 @@
 
             Button:
                 text: 'Cancel'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 on_release:
                     root.dismiss()
                     app.root.bind_keyboard()
@@ -198,12 +215,280 @@
 
             Button:
                 text: 'Open'
-                font_size: app.fontsize
+                font_size: int(18 * app.fontscale)
                 on_release:
                     root.dismiss()
                     app.root.bind_keyboard()
                     app.save_dialog_visible = False
                     app.load_offset_waveform(file_chooser.path, text_input.text)
+
+<SettingsDialog>:
+    fontsize_slider: fontsize_slider
+    font_spinner: font_spinner
+    maximized_checkbox: maximized_checkbox
+    connection_label: connection_label
+    ports_label: ports_label
+    auto_dismiss: False
+    title: 'Settings'
+    size_hint: (0.85, 0.85)
+    
+    on_open:
+        connection_label.text = app.get_connection_status_text()
+        ports_label.text = app.get_serial_ports_text()
+        font_spinner.values = app.get_available_fonts()
+        font_spinner.text = app.fontname
+
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [20, 20, 20, 20]
+        spacing: 15
+
+        # Version Info Section
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: 60
+            
+            Label:
+                text: '[b]About[/b]'
+                font_size: int(18 * app.fontscale)
+                markup: True
+                halign: 'left'
+                text_size: self.size
+                size_hint_y: None
+                height: 25
+            
+            Label:
+                text: 'Whoa-Scope v' + app.title.split('v')[-1] if 'v' in app.title else 'Whoa-Scope'
+                font_size: int(16 * app.fontscale)
+                halign: 'left'
+                text_size: self.size
+                size_hint_y: None
+                height: 25
+
+        # Separator
+        Widget:
+            size_hint_y: None
+            height: 1
+            canvas:
+                Color:
+                    rgba: 0.5, 0.5, 0.5, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+        # Font Settings Section
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: 130
+            
+            Label:
+                text: '[b]Display Settings[/b]'
+                font_size: int(18 * app.fontscale)
+                markup: True
+                halign: 'left'
+                text_size: self.size
+                size_hint_y: None
+                height: 30
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 40
+                spacing: 10
+                
+                Label:
+                    text: 'Font:'
+                    font_size: int(16 * app.fontscale)
+                    size_hint_x: 0.2
+                    halign: 'right'
+                    text_size: self.size
+                    valign: 'middle'
+                
+                Spinner:
+                    id: font_spinner
+                    text: app.fontname
+                    values: app.get_available_fonts()
+                    size_hint_x: 0.5
+                    font_size: int(16 * app.fontscale)
+                    on_text: app.update_fontname(self.text)
+                
+                Label:
+                    text: '(requires restart)'
+                    font_size: int(14 * app.fontscale)
+                    size_hint_x: 0.3
+                    color: 0.6, 0.6, 0.6, 1
+                    halign: 'left'
+                    text_size: self.size
+                    valign: 'middle'
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 40
+                spacing: 10
+                
+                Label:
+                    text: 'Text Scale:'
+                    font_size: int(16 * app.fontscale)
+                    size_hint_x: 0.2
+                    halign: 'right'
+                    text_size: self.size
+                    valign: 'middle'
+                
+                Slider:
+                    id: fontsize_slider
+                    min: 0.5
+                    max: 1.5
+                    value: app.fontscale
+                    step: 0.05
+                    size_hint_x: 0.5
+                    on_value: app.update_fontscale(self.value)
+                
+                Label:
+                    text: str(int(fontsize_slider.value * 100)) + '% (requires restart)'
+                    font_size: int(14 * app.fontscale)
+                    size_hint_x: 0.3
+                    color: 0.6, 0.6, 0.6, 1
+                    halign: 'left'
+                    text_size: self.size
+                    valign: 'middle'
+
+        # Window Settings Section
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: 80
+            
+            Label:
+                text: '[b]Window Settings[/b]'
+                font_size: int(18 * app.fontscale)
+                markup: True
+                halign: 'left'
+                text_size: self.size
+                size_hint_y: None
+                height: 30
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 40
+                spacing: 10
+                
+                CheckBox:
+                    id: maximized_checkbox
+                    size_hint_x: None
+                    width: 40
+                    active: app.launch_maximized
+                    on_active: app.update_launch_maximized(self.active)
+                
+                Label:
+                    text: 'Launch maximized on startup'
+                    font_size: int(16 * app.fontscale)
+                    halign: 'left'
+                    text_size: self.size
+                    valign: 'middle'
+
+        # Separator
+        Widget:
+            size_hint_y: None
+            height: 1
+            canvas:
+                Color:
+                    rgba: 0.5, 0.5, 0.5, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+        # Connection Status Section
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: 1
+            
+            Label:
+                text: '[b]Serial Connection[/b]'
+                font_size: int(18 * app.fontscale)
+                markup: True
+                halign: 'left'
+                text_size: self.size
+                size_hint_y: None
+                height: 30
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 30
+                
+                Label:
+                    text: 'Status: '
+                    font_size: int(16 * app.fontscale)
+                    size_hint_x: 0.15
+                    halign: 'right'
+                    text_size: self.size
+                    valign: 'middle'
+                
+                Label:
+                    id: connection_label
+                    text: '[color=#888888]Loading...[/color]'
+                    font_size: int(16 * app.fontscale)
+                    markup: True
+                    halign: 'left'
+                    text_size: self.size
+                    valign: 'middle'
+            
+            Label:
+                text: 'Available Ports:'
+                font_size: int(16 * app.fontscale)
+                halign: 'left'
+                text_size: self.size
+                size_hint_y: None
+                height: 25
+            
+            ScrollView:
+                size_hint_y: 1
+                do_scroll_x: False
+                
+                Label:
+                    id: ports_label
+                    text: 'Scanning...'
+                    font_size: int(15 * app.fontscale)
+                    markup: True
+                    halign: 'left'
+                    valign: 'top'
+                    text_size: self.width, None
+                    size_hint_y: None
+                    height: self.texture_size[1]
+                    padding: [10, 5]
+
+        # Settings Path Info
+        Label:
+            text: 'Settings stored in: ' + app.get_settings_directory()
+            font_size: int(14 * app.fontscale)
+            color: 0.5, 0.5, 0.5, 1
+            size_hint_y: None
+            height: 20
+            halign: 'left'
+            text_size: self.size
+
+        # Close Button
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: 50
+            padding: [0, 10, 0, 0]
+            
+            Widget:
+                size_hint_x: 0.3
+            
+            Button:
+                text: 'Close'
+                font_size: int(18 * app.fontscale)
+                size_hint_x: 0.4
+                on_release: root.dismiss()
+            
+            Widget:
+                size_hint_x: 0.3
 
 <DisplayLabel>
     canvas.before:
@@ -301,7 +586,7 @@
     Label:
         size_hint_x: 0.1
         text: root.label_text + app.num2str(root.value, 4) + root.units
-        font_size: app.fontsize
+        font_size: int(18 * app.fontscale)
         halign: 'center'
 
     Slider:
@@ -332,7 +617,7 @@
     Label:
         size_hint_x: 0.1
         text: root.label_text + app.num2str(root.value, 4) + root.units
-        font_size: app.fontsize
+        font_size: int(18 * app.fontscale)
         halign: 'center'
 
     Slider:
@@ -389,21 +674,21 @@
             id: led_one_button
             size_hint_x: 2 / 30
             text: 'LED1'
-            font_size: app.fontsize
+            font_size: int(18 * app.fontscale)
             on_press: root.led1_callback()
 
         ToggleButton:
             id: led_two_button
             size_hint_x: 2 / 30
             text: 'LED2'
-            font_size: app.fontsize
+            font_size: int(18 * app.fontscale)
             on_press: root.led2_callback()
 
         ToggleButton:
             id: led_three_button
             size_hint_x: 2 / 30
             text: 'LED3'
-            font_size: app.fontsize
+            font_size: int(18 * app.fontscale)
             on_press: root.led3_callback()
 
         LogarithmicSlider:
@@ -424,7 +709,7 @@
             id: d_zero_button
             size_hint_x: 0.1
             text: 'D0'
-            font_size: app.fontsize
+            font_size: int(18 * app.fontscale)
             on_press: root.d0_button_callback()
 
         BoxLayout:
@@ -439,7 +724,7 @@
                     id: d_zero_mode_spinner
                     size_hint_x: 1 / 9 
                     text: 'OUT'
-                    font_size: app.fontsize
+                    font_size: int(18 * app.fontscale)
                     values: 'OUT', 'IN', 'PWM', 'SERVO'
                     on_text: root.d0_mode_callback()
 
@@ -461,7 +746,7 @@
                     id: d_zero_od_spinner
                     size_hint_x: 1 / 9
                     text: 'PP'
-                    font_size: app.fontsize
+                    font_size: int(18 * app.fontscale)
                     values: 'PP', 'OD'
                     on_text: root.d0_od_callback()
 
@@ -484,7 +769,7 @@
             id: d_one_button
             size_hint_x: 0.1
             text: 'D1'
-            font_size: app.fontsize
+            font_size: int(18 * app.fontscale)
             on_press: root.d1_button_callback()
 
         BoxLayout:
@@ -499,7 +784,7 @@
                     id: d_one_mode_spinner
                     size_hint_x: 1 / 9
                     text: 'OUT'
-                    font_size: app.fontsize
+                    font_size: int(18 * app.fontscale)
                     values: 'OUT', 'IN', 'PWM', 'SERVO'
                     on_text: root.d1_mode_callback()
 
@@ -521,7 +806,7 @@
                     id: d_one_od_spinner
                     size_hint_x: 1 / 9
                     text: 'PP'
-                    font_size: app.fontsize
+                    font_size: int(18 * app.fontscale)
                     values: 'PP', 'OD'
                     on_text: root.d1_od_callback()
 
@@ -544,7 +829,7 @@
             id: d_two_button
             size_hint_x: 0.1
             text: 'D2'
-            font_size: app.fontsize
+            font_size: int(18 * app.fontscale)
             on_press: root.d2_button_callback()
 
         BoxLayout:
@@ -559,7 +844,7 @@
                     id: d_two_mode_spinner
                     size_hint_x: 1 / 9
                     text: 'OUT'
-                    font_size: app.fontsize
+                    font_size: int(18 * app.fontscale)
                     values: 'OUT', 'IN', 'PWM', 'SERVO'
                     on_text: root.d2_mode_callback()
 
@@ -581,7 +866,7 @@
                     id: d_two_od_spinner
                     size_hint_x: 1 / 9
                     text: 'PP'
-                    font_size: app.fontsize
+                    font_size: int(18 * app.fontscale)
                     values: 'PP', 'OD'
                     on_text: root.d2_od_callback()
 
@@ -604,7 +889,7 @@
             id: d_three_button
             size_hint_x: 0.1
             text: 'D3'
-            font_size: app.fontsize
+            font_size: int(18 * app.fontscale)
             on_press: root.d3_button_callback()
 
         BoxLayout:
@@ -619,7 +904,7 @@
                     id: d_three_mode_spinner
                     size_hint_x: 1 / 9
                     text: 'OUT'
-                    font_size: app.fontsize
+                    font_size: int(18 * app.fontscale)
                     values: 'OUT', 'IN', 'PWM', 'SERVO'
                     on_text: root.d3_mode_callback()
 
@@ -641,7 +926,7 @@
                     id: d_three_od_spinner
                     size_hint_x: 1 / 9
                     text: 'PP'
-                    font_size: app.fontsize
+                    font_size: int(18 * app.fontscale)
                     values: 'PP', 'OD'
                     on_text: root.d3_od_callback()
 
@@ -736,7 +1021,7 @@
                 pos_hint: { 'center_x': 0.6, 'y': 0 }
                 size_hint: None, None
                 size: 1.1 * self.texture_size[0], self.texture_size[1]
-                font_size: 0.1 * root.scope_plot.size[1]
+                font_size: 0.08 * root.scope_plot.size[1]
                 halign: 'left'
                 text: '[b][color=#FFFF00]CH1[/color]\\n[color=#00FFFF]CH2[/color][/b]'
                 markup: True
@@ -809,7 +1094,7 @@
                 LabelSpinButton:
                     id: trigger_src_button
                     size_hint_y: 1 / 9
-                    texts: ['[size=14]TRIGGER:[/size]\\n[b][size=32]CH1[/size][/b]', '[size=14]TRIGGER:[/size]\\n[b][size=32]CH2[/size][/b]']
+                    texts: ['[size=14]TRIGGER:[/size]\n[b][size=24]CH1[/size][/b]', '[size=24]TRIGGER:[/size]\n[b][size=16]CH2[/size][/b]']
                     actions: [root.set_trigger_src_ch1, root.set_trigger_src_ch2]
                     text: self.texts[0]
                     markup: True
@@ -859,6 +1144,16 @@
                         size_hint_x: 0.5
                         source: kivy_resources.resource_find('right.png')
                         on_press: scope_plot.decrease_sampling_interval()
+                
+                ImageButton:
+                    id: settings_button
+                    source: kivy_resources.resource_find('controls.png')
+                    font_size: 24
+                    size_hint_y: 1 / 18
+                    background_color: 0.345, 0.345, 0.345, 1
+                    on_release:
+                        app.settings_dialog_visible = True
+                        Factory.SettingsDialog().open()
 
             AltImageToggleButton:
                 size_hint_x: None

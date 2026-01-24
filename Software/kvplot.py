@@ -67,7 +67,8 @@ class Plot(Widget):
         self.grid_color = kwargs.pop('grid_color', '#333333')
         self.label_font_baseline = float(kwargs.pop('baseline', 0.6))
         self.label_fontsize = int(kwargs.pop('fontsize', 12))
-        self.label_font = kwargs.pop('font', 'Helvetica')
+        # Default to 'Roboto' which is registered from ./fonts directory
+        self.label_font = kwargs.pop('font', 'Roboto')
         self.linear_minor_ticks = kwargs.pop('linear_minor_ticks', 'off')
 
         super(Plot, self).__init__(**kwargs)
@@ -313,11 +314,12 @@ class Plot(Widget):
         anchor = kwargs.get('anchor', 'center')
         color = kwargs.get('color', '#FFFFFF')
         font_size = kwargs.get('font_size', 16)
+        font_name = kwargs.get('font_name', self.label_font)
 
         if text == '':
             return
 
-        label = CoreLabel(text = text, font_size = font_size, color = get_color_from_hex(color))
+        label = CoreLabel(text = text, font_size = font_size, font_name = font_name, color = get_color_from_hex(color))
         label.refresh()
 
         texture = label.texture

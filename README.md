@@ -4,11 +4,11 @@ This repository is a fork of the O-Scope software by [Bradley Minch](https://git
 ## Current changes
 * Increased window size on launch
 * Somewhat improved voltmeter text formatting
+* Choice of fonts (Atkinson Hyperlegible, OpenDyslexic)
 * Underlying codebase changes (separate UI from code, use `uv` for package management)
 * Changes made by Brad after the public build was released (incl. improved USB connection management)
 
 ## Planned Changes
-* Choice of fonts (Atkinson Hyperlegible)
 * Use native file picker when saving data files
 * Customizeable hotkeys
 * Add text to icons/arrows describing what they do

@@ -4,6 +4,18 @@ Config.set('kivy', 'exit_on_escape', '0')
 Config.set('graphics', 'width', 1200)
 Config.set('graphics', 'height', 800)
 
+# Initialize settings early to get preferences before UI loads
+from settings_manager import settings_manager, AVAILABLE_FONTS, get_font_path
+settings_manager.initialize()
+
+# Register all available fonts with Kivy
+from kivy.core.text import LabelBase
+for font_name, font_path in AVAILABLE_FONTS.items():
+    try:
+        LabelBase.register(font_name, font_path)
+    except Exception as e:
+        print(f"Warning: Could not register font '{font_name}': {e}")
+
 from kvplot import Plot
 from kivy.app import App
 from kivy.core.window import Window
@@ -31,6 +43,7 @@ import math
 import oscope
 import os, pathlib, sys
 import kivy.resources as kivy_resources
+import serial.tools.list_ports as list_ports
 
 import toml
 from pathlib import Path
@@ -45,7 +58,56 @@ else:
     kivy_resources.resource_add_path(os.getcwd())
     kivy_resources.resource_add_path(os.path.join(os.getcwd(), 'resources'))
 
+
+class SettingsDialog(Popup):
+    """Settings dialog with keyboard support for escape key."""
+    
+    def __init__(self, **kwargs):
+        super(SettingsDialog, self).__init__(**kwargs)
+        self._keyboard = None
+    
+    def on_open(self):
+        # Request keyboard
+        self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+        if self._keyboard:
+            self._keyboard.bind(on_key_down=self._on_keyboard_down)
+        
+        # Start live updates
+        app.start_settings_updates(self.ids.connection_label, self.ids.ports_label)
+    
+    def on_dismiss(self):
+        # Stop live updates
+        app.stop_settings_updates()
+        
+        # Unbind keyboard
+        if self._keyboard:
+            self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+            self._keyboard = None
+        
+        # Rebind main keyboard and update visibility flag
+        try:
+            app.root.bind_keyboard()
+        except:
+            pass
+        app.settings_dialog_visible = False
+    
+    def _keyboard_closed(self):
+        if self._keyboard:
+            self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+            self._keyboard = None
+    
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        if keycode[1] == 'escape':
+            self.dismiss()
+            return True
+        return False
+
+
+# Register SettingsDialog with Factory before loading kv file
+Factory.register('SettingsDialog', cls=SettingsDialog)
+
 Builder.load_file('scopeui.kv')
+
 
 class DisplayLabel(Label):
 
@@ -259,7 +321,7 @@ class ScopePlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = app.fontsize, linear_minor_ticks = 'on')
+                       fontsize = int(12 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -477,8 +539,8 @@ class ScopePlot(Plot):
                 ch2_rms = math.sqrt(float(np.sum((ch2 - ch2_mean) ** 2)) / num_samples)
 
                 base_meter_text = '[b][color=#FFFF00]{}V[/color]\n[color=#00FFFF]{}V[/color][/b]'
-                ch1_str = app.num2str(ch1_rms if app.root.scope.meter_ch1rms else ch1_mean, 4, positive_sign=True, trailing_zeros=True)
-                ch2_str = app.num2str(ch2_rms if app.root.scope.meter_ch2rms else ch2_mean, 4, positive_sign=True, trailing_zeros=True)
+                ch1_str = app.num2str(ch1_rms if app.root.scope.meter_ch1rms else ch1_mean, 3, positive_sign=True, trailing_zeros=True)
+                ch2_str = app.num2str(ch2_rms if app.root.scope.meter_ch2rms else ch2_mean, 3, positive_sign=True, trailing_zeros=True)
                 app.root.scope.meter_label.text = base_meter_text.format(ch1_str, ch2_str)
                 
 
@@ -941,7 +1003,7 @@ class ScopeXYPlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = app.fontsize, linear_minor_ticks = 'on')
+                       fontsize = int(12 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -1303,7 +1365,7 @@ class WavegenPlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = app.fontsize, linear_minor_ticks = 'on')
+                       fontsize = int(12 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -1705,7 +1767,7 @@ class OffsetWaveformPlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = app.fontsize, marker_radius = 6., linear_minor_ticks = 'on')
+                       fontsize = int(12 * app.fontscale), font = app.fontname, marker_radius = 6., linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -1864,7 +1926,7 @@ class BodePlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = app.fontsize, marker_radius = 6., linear_minor_ticks = 'on')
+                       fontsize = int(12 * app.fontscale), font = app.fontname, marker_radius = 6., linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -3307,26 +3369,142 @@ class RootWidget(ScreenManager):
         return True
 
 class MainApp(App):
+    # Font settings as Kivy properties for proper binding in KV
+    fontname = StringProperty('Roboto')
+    fontscale = NumericProperty(1.0)  # Scale factor (1.0 = 100%)
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
+        # Settings manager already initialized at module load time for font config
+        
         self.dev = oscope.oscope()
         self.connect_job = None
         self.save_dialog_visible = False
         self.save_dialog_path = os.path.expanduser('~')
         self.save_dialog_file = None
-        self.fontsize = 18
+        
+        # Load font settings from persistent storage
+        self.fontscale = settings_manager.font_scale
+        self.fontname = settings_manager.font_name
+        
+        # Load launch maximized setting
+        self.launch_maximized = settings_manager.launch_maximized
+        
+        # Settings dialog visibility and update job
+        self.settings_dialog_visible = False
+        self.settings_update_job = None
 
     def build(self):
         self.root = RootWidget()
         self.title = f"Whoa-Scope v{__version__}"
         self.root.current = 'scope'
+        
+        # Apply launch maximized setting
+        if settings_manager.launch_maximized:
+            Window.maximize()
+        
         if self.dev.connected:
             self.root.scope.scope_plot.update_job = Clock.schedule_once(self.root.scope.scope_plot.update_scope_plot, 0.1)
             self.root.scope.digital_control_panel.sync_controls()
         else:
             self.connect_job = Clock.schedule_once(self.connect_to_oscope, 0.2)
         return self.root
+    
+    def get_serial_port_info(self):
+        """Get detailed information about serial ports for the settings panel."""
+        port_info = []
+        devices = list_ports.comports()
+        
+        for device in devices:
+            info = {
+                'port': device.device,
+                'description': device.description,
+                'hwid': device.hwid,
+                'vid': device.vid,
+                'pid': device.pid,
+                'serial_number': device.serial_number,
+                'manufacturer': device.manufacturer,
+                'product': device.product,
+                'is_oscope': device.vid == 0x6666 and device.pid == 0xCDC,
+            }
+            port_info.append(info)
+        
+        return port_info
+    
+    def get_connection_status_text(self):
+        """Get formatted connection status text for display."""
+        if self.dev.connected:
+            try:
+                port_name = self.dev.dev.port if self.dev.dev else "Unknown"
+                return f"[color=#00FF00][b]Connected[/b][/color] to {port_name}"
+            except:
+                return "[color=#00FF00][b]Connected[/b][/color]"
+        else:
+            return "[color=#FF0000][b]Disconnected[/b][/color]"
+    
+    def get_serial_ports_text(self):
+        """Get formatted list of serial ports for display."""
+        ports = self.get_serial_port_info()
+        if not ports:
+            return "No serial ports detected"
+        
+        lines = []
+        for port in ports:
+            status = "[color=#00FF00]●[/color]" if port['is_oscope'] else "[color=#888888]○[/color]"
+            desc = port['description'] or "Unknown device"
+            vid_pid = f"VID:0x{port['vid']:04X} PID:0x{port['pid']:04X}" if port['vid'] else ""
+            lines.append(f"{status} {port['port']}: {desc}")
+            if vid_pid:
+                lines.append(f"    {vid_pid}")
+        
+        return "\\n".join(lines)
+    
+    def get_available_fonts(self):
+        """Get list of available font names for the spinner."""
+        return list(AVAILABLE_FONTS.keys())
+    
+    def update_fontscale(self, scale):
+        """Update font scale and save to settings."""
+        self.fontscale = float(scale)
+        settings_manager.font_scale = float(scale)
+    
+    def update_fontname(self, name):
+        """Update font name and save to settings."""
+        self.fontname = name
+        settings_manager.font_name = name
+    
+    def update_launch_maximized(self, value):
+        """Update launch maximized setting and save."""
+        self.launch_maximized = value
+        settings_manager.launch_maximized = value
+    
+    def get_settings_directory(self):
+        """Get the settings directory path for display."""
+        return settings_manager.get_settings_directory()
+    
+    def start_settings_updates(self, connection_label, ports_label):
+        """Start periodic updates of the settings dialog connection info."""
+        self._settings_connection_label = connection_label
+        self._settings_ports_label = ports_label
+        if self.settings_update_job is not None:
+            self.settings_update_job.cancel()
+        self.settings_update_job = Clock.schedule_interval(self._update_settings_connection, 1.0)
+    
+    def stop_settings_updates(self):
+        """Stop periodic updates of the settings dialog."""
+        if self.settings_update_job is not None:
+            self.settings_update_job.cancel()
+            self.settings_update_job = None
+    
+    def _update_settings_connection(self, dt):
+        """Update connection status labels in the settings dialog."""
+        try:
+            if hasattr(self, '_settings_connection_label') and self._settings_connection_label:
+                self._settings_connection_label.text = self.get_connection_status_text()
+            if hasattr(self, '_settings_ports_label') and self._settings_ports_label:
+                self._settings_ports_label.text = self.get_serial_ports_text()
+        except Exception:
+            pass  # Widget may have been destroyed
 
     def close_application(self):
         App.get_running_app().stop()
