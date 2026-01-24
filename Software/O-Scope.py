@@ -470,8 +470,11 @@ class ScopePlot(Plot):
                 ch1_rms = math.sqrt(float(np.sum((ch1 - ch1_mean) ** 2)) / num_samples)
                 ch2_rms = math.sqrt(float(np.sum((ch2 - ch2_mean) ** 2)) / num_samples)
 
-                app.root.scope.meter_label.text = '[b][color=#FFFF00]{}V[/color]\n[color=#00FFFF]{}V[/color][/b]'.format(app.num2str(ch1_rms if app.root.scope.meter_ch1rms else ch1_mean, 4), 
-                                                                                                                         app.num2str(ch2_rms if app.root.scope.meter_ch2rms else ch2_mean, 4))
+                base_meter_text = '[b][color=#FFFF00]{}V[/color]\n[color=#00FFFF]{}V[/color][/b]'
+                ch1_str = app.num2str(ch1_rms if app.root.scope.meter_ch1rms else ch1_mean, 4, positive_sign=True, trailing_zeros=True)
+                ch2_str = app.num2str(ch2_rms if app.root.scope.meter_ch2rms else ch2_mean, 4, positive_sign=True, trailing_zeros=True)
+                app.root.scope.meter_label.text = base_meter_text.format(ch1_str, ch2_str)
+                
 
             if app.root.scope.xyplot_visible:
                 if app.root.scope.scope_xyplot.ch1_vs_ch2:
@@ -3349,29 +3352,61 @@ class MainApp(App):
             self.connect_job.cancel()
         self.connect_job = Clock.schedule_once(self.connect_to_oscope, 0.2)
 
-    def num2str(self, x, n = 0):
-        if not ((type(x) is float) or (type(x) is int)):
-            raise TypeError('x must be a numeric data type')
-        x = float(x)
+    def num2str(self, num, ndigits = 0, positive_sign = False, trailing_zeros = False):
+        """
+        Convert a numeric value to a string with an SI prefix.
+        Parameters
+        ----------
+        num : float or int
+            The numeric value to convert.
+        ndigits : int, optional
+            The number of significant digits to include in the output
+            string. The default is 0, which means to use as many digits
+            as necessary to represent the number exactly.
+        positive_sign : bool, optional
+            If True, a plus sign is prepended to positive numbers.
+            The default is False.
+        trailing_zeros : bool, optional
+            If True, trailing zeros are included in the output string
+            to ensure that the number of significant digits is equal to
+            ndigits. The default is False.
+        Returns
+        -------
+        str
+            The formatted string with an SI prefix.
+        """
+        ndigits = ndigits - 1 if ndigits > 0 else ndigits # for compatibility with previous behavior
+        if not ((type(num) is float) or (type(num) is int)):
+            raise TypeError('num must be a numeric data type')
+        num = float(num)
         multipliers = (1., 1e-3, 1e-6, 1e-9, 1e-12, 1e-15, 1e-18, 1e-21, 1e-24, 
                        1e24, 1e21, 1e18, 1e15, 1e12, 1e9, 1e6, 1e3)
         prefixes = (u'', u'k', u'M', u'G', u'T', u'P', u'E', u'Z', u'Y', 
                     u'y', u'z', u'a', u'f', u'p', u'n', u'\xB5', u'm')
-        if abs(x) == 0.:
+        if abs(num) == 0.:
             index = 0
         else:
-            index = int(math.floor(math.log10(abs(x)) / 3.))
+            # figure out which prefix to use
+            index = int(math.floor(math.log10(abs(num)) / 3.))
         if (index >= -8) and (index <= 8):
-            x = multipliers[index] * x
-            if (n == 0) or (abs(x) == 0.):
-                num_str = '{:g}'.format(x)
-            else:
-                num_str = '{:g}'.format(round(x, - int(math.floor(math.log10(abs(x))) - (n - 1))))
-            if num_str[-2:] == '.0':
-                num_str = num_str[:-2]
-            return num_str + prefixes[index]
+            num = multipliers[index] * num
+            prefix = prefixes[index]
         else:
-            return '{:g}'.format(x if n == 0 else round(x, - int(math.floor(math.log10(abs(x))) - (n - 1))))
+            prefix = 'e{!s}'.format(int(3 * -index))
+        if ndigits > 0:
+            fmt_str = '{:.' + str(ndigits) + 'f}'
+            num_str = fmt_str.format(num)
+            if not trailing_zeros:
+                # remove trailing zeros
+                while (len(num_str) > 1) and (num_str[-1] == '0') and (num_str[-2] != '.'):
+                    num_str = num_str[:-1]
+                if (len(num_str) > 1) and (num_str[-1] == '0') and (num_str[-2] == '.'):
+                    num_str = num_str[:-2]
+        else:
+            num_str = str(num)
+        if positive_sign and (num >= 0.):
+            num_str = '+' + num_str
+        return num_str + prefix
 
     def process_selection(self, selection):
         if selection == '':
