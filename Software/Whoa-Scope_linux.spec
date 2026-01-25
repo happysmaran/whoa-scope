@@ -1,15 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from kivy_deps import sdl2, glew
-
 block_cipher = None
 
 
 a = Analysis(['O-Scope.py'],
-             pathex=['C:\\Users\\Bradley Minch\\Desktop\\O-Scope\\Software'],
+             pathex=[],
              binaries=[],
-             datas=[('.\\resources\\*.png', 'resources')],
-             hiddenimports=['win32timezone'],
+             datas=[('./resources/*.png', 'resources'), ('pyproject.toml', '.'), ('scopeui.kv', '.'), ('./fonts/*', 'fonts')],
+             hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
@@ -24,8 +22,8 @@ exe = EXE(pyz,
           a.binaries,
           a.zipfiles,
           a.datas,
-          *[Tree(p) for p in (sdl2.dep_bins + glew.dep_bins)],
-          name='O-Scope',
+          [],
+          name='Whoa-Scope',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,

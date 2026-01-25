@@ -697,7 +697,7 @@
             minimum: 500e-9
             maximum: 1.
             initial_value: 20e-3
-            label_text: 'Servo\\nPeriod\\n'
+            label_text: 'Servo\nPeriod\n'
             units: 's'
             on_value: root.servo_period_callback()
 
@@ -734,7 +734,7 @@
                     minimum: 500
                     maximum: 500e3
                     initial_value: 1e3
-                    label_text: 'Freq\\n'
+                    label_text: 'Freq\n'
                     units: 'Hz'
                     on_value: root.d0_freq_callback()
 
@@ -757,7 +757,7 @@
                     maximum: 100.
                     initial_value: 50.
                     step: 5.
-                    label_text: 'Duty\\nCycle\\n'
+                    label_text: 'Duty\nCycle\n'
                     units: '%'
                     on_value: root.d0_duty_callback()
 
@@ -794,7 +794,7 @@
                     minimum: 500
                     maximum: 500e3
                     initial_value: 1e3
-                    label_text: 'Freq\\n'
+                    label_text: 'Freq\n'
                     units: 'Hz'
                     on_value: root.d1_freq_callback()
 
@@ -817,7 +817,7 @@
                     maximum: 100.
                     initial_value: 50.
                     step: 5.
-                    label_text: 'Duty\\nCycle\\n'
+                    label_text: 'Duty\nCycle\n'
                     units: '%'
                     on_value: root.d1_duty_callback()
 
@@ -854,7 +854,7 @@
                     minimum: 500
                     maximum: 500e3
                     initial_value: 1e3
-                    label_text: 'Freq\\n'
+                    label_text: 'Freq\n'
                     units: 'Hz'
                     on_value: root.d2_freq_callback()
 
@@ -877,7 +877,7 @@
                     maximum: 100.
                     initial_value: 50.
                     step: 5.
-                    label_text: 'Duty\\nCycle\\n'
+                    label_text: 'Duty\nCycle\n'
                     units: '%'
                     on_value: root.d2_duty_callback()
 
@@ -914,7 +914,7 @@
                     minimum: 500
                     maximum: 500e3
                     initial_value: 1e3
-                    label_text: 'Freq\\n'
+                    label_text: 'Freq\n'
                     units: 'Hz'
                     on_value: root.d3_freq_callback()
 
@@ -937,7 +937,7 @@
                     maximum: 100.
                     initial_value: 50.
                     step: 5.
-                    label_text: 'Duty\\nCycle\\n'
+                    label_text: 'Duty\nCycle\n'
                     units: '%'
                     on_value: root.d3_duty_callback()
 
@@ -1018,12 +1018,12 @@
 
             DisplayLabelAlt:
                 id: meter_label
-                pos_hint: { 'center_x': 0.6, 'y': 0 }
+                pos_hint: { 'x': 0.2, 'y': 0 }
                 size_hint: None, None
                 size: 1.1 * self.texture_size[0], self.texture_size[1]
                 font_size: 0.08 * root.scope_plot.size[1]
                 halign: 'left'
-                text: '[b][color=#FFFF00]CH1[/color]\\n[color=#00FFFF]CH2[/color][/b]'
+                text: '[b][color=#FFFF00]CH1[/color]\n[color=#00FFFF]CH2[/color][/b]'
                 markup: True
                 multiline: True
                 bkgnd_color: 0.03125, 0.03125, 0.03125, 0
@@ -1094,7 +1094,7 @@
                 LabelSpinButton:
                     id: trigger_src_button
                     size_hint_y: 1 / 9
-                    texts: ['[size=14]TRIGGER:[/size]\n[b][size=24]CH1[/size][/b]', '[size=24]TRIGGER:[/size]\n[b][size=16]CH2[/size][/b]']
+                    texts: ['[size=14]TRIGGER:[/size]\n[b][size=24]CH1[/size][/b]', '[size=14]TRIGGER:[/size]\n[b][size=24]CH2[/size][/b]']
                     actions: [root.set_trigger_src_ch1, root.set_trigger_src_ch2]
                     text: self.texts[0]
                     markup: True
@@ -1576,7 +1576,7 @@
                 minimum: 20e-3
                 maximum: 200e3
                 initial_value: 1.
-                label_text: 'Start\\nFreq\\n'
+                label_text: 'Start\nFreq\n'
                 units: 'Hz'
 
             LogarithmicSlider:
@@ -1587,7 +1587,7 @@
                 minimum: 20e-3
                 maximum: 200e3
                 initial_value: 100e3
-                label_text: 'End\\nFreq\\n'
+                label_text: 'End\nFreq\n'
                 units: 'Hz'
 
             LinearSlider:
@@ -1600,7 +1600,7 @@
                 step: 10
                 min_step: 1
                 initial_value: 101
-                label_text: 'Points\\n'
+                label_text: 'Points\n'
                 units: ''
 
             LinearSlider:
@@ -1612,7 +1612,7 @@
                 maximum: 2.5
                 step: 50e-3
                 initial_value: 1.
-                label_text: 'Amp\\n'
+                label_text: 'Amp\n'
                 units: 'V'
 
             LinearSlider:
@@ -1624,7 +1624,7 @@
                 maximum: 5.
                 step: 0.5
                 initial_value: 2.5
-                label_text: 'Offset\\n'
+                label_text: 'Offset\n'
                 units: 'V'
 
             AltImageToggleButton:

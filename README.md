@@ -3,12 +3,13 @@ This repository is a fork of the O-Scope software by [Bradley Minch](https://git
 
 ## Current changes
 * Increased window size on launch
-* Somewhat improved voltmeter text formatting
-* Choice of fonts (Atkinson Hyperlegible, OpenDyslexic)
+* Improved voltmeter text formatting
+* Choice of fonts and font size (Atkinson Hyperlegible, OpenDyslexic)
 * Underlying codebase changes (separate UI from code, use `uv` for package management)
 * Changes made by Brad after the public build was released (incl. improved USB connection management)
 
 ## Planned Changes
+* Custom color themes (light mode, rainbow, etc.)
 * Use native file picker when saving data files
 * Customizeable hotkeys
 * Add text to icons/arrows describing what they do
@@ -21,3 +22,7 @@ To develop the project:
 1. Clone this repository.
 2. From the `Software` directory, run `uv run python O-Scope.py`.
 3. Make code changes and see the results!
+
+## Packaging
+To package Whoa-Scope into a single .exe, run `uv run pyinstaller --log-level INFO .\Whoa-Scope_win.spec` (substituting linux or mac .specs as appropriate).
+The output file should appear in `./dist`.

@@ -39,6 +39,7 @@ from kivy.lang import Builder
 from kivy.utils import platform
 
 import numpy as np
+import sigfig
 import math
 import oscope
 import os, pathlib, sys
@@ -48,15 +49,18 @@ import serial.tools.list_ports as list_ports
 import toml
 from pathlib import Path
 
-pyproject = toml.loads(Path("pyproject.toml").read_text())
-__version__ = pyproject["project"]["version"]
+
 
 if getattr(sys, 'frozen', False):
     kivy_resources.resource_add_path(sys._MEIPASS)
     kivy_resources.resource_add_path(os.path.join(sys._MEIPASS, 'resources'))
+    pyproject = toml.loads(Path(os.path.join(sys._MEIPASS, "pyproject.toml")).read_text())
 else:
     kivy_resources.resource_add_path(os.getcwd())
     kivy_resources.resource_add_path(os.path.join(os.getcwd(), 'resources'))
+    pyproject = toml.loads(Path("pyproject.toml").read_text())
+
+__version__ = pyproject["project"]["version"]
 
 
 class SettingsDialog(Popup):
@@ -321,7 +325,7 @@ class ScopePlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = int(12 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
+                       fontsize = int(18 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -539,8 +543,8 @@ class ScopePlot(Plot):
                 ch2_rms = math.sqrt(float(np.sum((ch2 - ch2_mean) ** 2)) / num_samples)
 
                 base_meter_text = '[b][color=#FFFF00]{}V[/color]\n[color=#00FFFF]{}V[/color][/b]'
-                ch1_str = app.num2str(ch1_rms if app.root.scope.meter_ch1rms else ch1_mean, 3, positive_sign=True, trailing_zeros=True)
-                ch2_str = app.num2str(ch2_rms if app.root.scope.meter_ch2rms else ch2_mean, 3, positive_sign=True, trailing_zeros=True)
+                ch1_str = app.num2str(ch1_rms if app.root.scope.meter_ch1rms else ch1_mean, 4, positive_sign=True, trailing_zeros=True)
+                ch2_str = app.num2str(ch2_rms if app.root.scope.meter_ch2rms else ch2_mean, 4, positive_sign=True, trailing_zeros=True)
                 app.root.scope.meter_label.text = base_meter_text.format(ch1_str, ch2_str)
                 
 
@@ -1003,7 +1007,7 @@ class ScopeXYPlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = int(12 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
+                       fontsize = int(18 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -1365,7 +1369,7 @@ class WavegenPlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = int(12 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
+                       fontsize = int(18 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -1767,7 +1771,7 @@ class OffsetWaveformPlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = int(12 * app.fontscale), font = app.fontname, marker_radius = 6., linear_minor_ticks = 'on')
+                       fontsize = int(18 * app.fontscale), font = app.fontname, marker_radius = 6., linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -1926,7 +1930,7 @@ class BodePlot(Plot):
 
         self.configure(background = '#080808', axes_background = '#000000', 
                        axes_color = '#FFFFFF', grid_color = '#585858', 
-                       fontsize = int(12 * app.fontscale), font = app.fontname, marker_radius = 6., linear_minor_ticks = 'on')
+                       fontsize = int(18 * app.fontscale), font = app.fontname, marker_radius = 6., linear_minor_ticks = 'on')
 
         self.refresh_plot()
 
@@ -3536,7 +3540,7 @@ class MainApp(App):
             self.connect_job.cancel()
         self.connect_job = Clock.schedule_once(self.connect_to_oscope, 0.2)
 
-    def num2str(self, num, ndigits = 0, positive_sign = False, trailing_zeros = False):
+    def num2str(self, num_raw, ndigits = 0, positive_sign = False, trailing_zeros = False):
         """
         Convert a numeric value to a string with an SI prefix.
         Parameters
@@ -3546,51 +3550,35 @@ class MainApp(App):
         ndigits : int, optional
             The number of significant digits to include in the output
             string. The default is 0, which means to use as many digits
-            as necessary to represent the number exactly.
+            as necessary to represent the number exactly. E.g., ndigits=3
+            would format 0.012345 as '12.3m', 0.0005432 as '0.543m
         positive_sign : bool, optional
             If True, a plus sign is prepended to positive numbers.
             The default is False.
         trailing_zeros : bool, optional
             If True, trailing zeros are included in the output string
-            to ensure that the number of significant digits is equal to
-            ndigits. The default is False.
+            to ensure that the length of the string matches the specified
+            number of significant digits. The default is False.
         Returns
         -------
         str
             The formatted string with an SI prefix.
         """
-        ndigits = ndigits - 1 if ndigits > 0 else ndigits # for compatibility with previous behavior
-        if not ((type(num) is float) or (type(num) is int)):
-            raise TypeError('num must be a numeric data type')
-        num = float(num)
-        multipliers = (1., 1e-3, 1e-6, 1e-9, 1e-12, 1e-15, 1e-18, 1e-21, 1e-24, 
-                       1e24, 1e21, 1e18, 1e15, 1e12, 1e9, 1e6, 1e3)
-        prefixes = (u'', u'k', u'M', u'G', u'T', u'P', u'E', u'Z', u'Y', 
-                    u'y', u'z', u'a', u'f', u'p', u'n', u'\xB5', u'm')
-        if abs(num) == 0.:
-            index = 0
-        else:
-            # figure out which prefix to use
-            index = int(math.floor(math.log10(abs(num)) / 3.))
-        if (index >= -8) and (index <= 8):
-            num = multipliers[index] * num
-            prefix = prefixes[index]
-        else:
-            prefix = 'e{!s}'.format(int(3 * -index))
-        if ndigits > 0:
-            fmt_str = '{:.' + str(ndigits) + 'f}'
-            num_str = fmt_str.format(num)
-            if not trailing_zeros:
-                # remove trailing zeros
-                while (len(num_str) > 1) and (num_str[-1] == '0') and (num_str[-2] != '.'):
-                    num_str = num_str[:-1]
-                if (len(num_str) > 1) and (num_str[-1] == '0') and (num_str[-2] == '.'):
-                    num_str = num_str[:-2]
-        else:
-            num_str = str(num)
-        if positive_sign and (num >= 0.):
+        ndigits = ndigits - 1 if ndigits > 0 else ndigits # for compatibility with previous behavior   
+        num_str = sigfig.round(num_raw, sigfigs = ndigits, prefix=True)
+        if positive_sign and num_raw > 0:
             num_str = '+' + num_str
-        return num_str + prefix
+        if trailing_zeros:
+            strlen = len(num_str.replace('-', '').replace('+', ''))
+            if '.' in num_str:
+                num_str = num_str + '0' * (ndigits - strlen + 1)
+            else:
+                if ndigits - strlen >= 2:
+                    num_str = num_str + '.' + '0' * (ndigits - strlen)
+                elif ndigits - strlen == 1:
+                    num_str = '0' + num_str
+        return num_str
+
 
     def process_selection(self, selection):
         if selection == '':

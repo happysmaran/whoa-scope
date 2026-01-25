@@ -4,9 +4,9 @@ block_cipher = None
 
 
 a = Analysis(['O-Scope.py'],
-             pathex=['/Users/bminch/Desktop/O-Scope/Software'],
+             pathex=[],
              binaries=[],
-             datas=[('./resources/*.png', 'resources')],
+             datas=[('./resources/*.png', 'resources'), ('pyproject.toml', '.'), ('scopeui.kv', '.'), ('./fonts/*', 'fonts')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
@@ -23,7 +23,7 @@ exe = EXE(pyz,
           a.zipfiles,
           a.datas,
           [],
-          name='O-Scope',
+          name='Whoa-Scope',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
@@ -32,6 +32,6 @@ exe = EXE(pyz,
           runtime_tmpdir=None,
           console=False , icon='O-Scope_icon.icns')
 app = BUNDLE(exe,
-             name='O-Scope.app',
+             name='Whoa-Scope.app',
              icon='O-Scope_icon.icns',
              bundle_identifier=None)
