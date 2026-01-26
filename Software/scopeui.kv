@@ -390,6 +390,185 @@
                     text_size: self.size
                     valign: 'middle'
 
+        # Color Theme Section
+        BoxLayout:
+            id: color_theme_section
+            orientation: 'vertical'
+            size_hint_y: None
+            height: 80 if theme_spinner.text != 'custom' else 200
+            
+            Label:
+                text: '[b]Color Theme[/b]'
+                font_size: int(18 * app.fontscale)
+                markup: True
+                halign: 'left'
+                text_size: self.size
+                size_hint_y: None
+                height: 30
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 40
+                spacing: 10
+                
+                Label:
+                    text: 'Theme:'
+                    font_size: int(16 * app.fontscale)
+                    size_hint_x: 0.15
+                    halign: 'right'
+                    text_size: self.size
+                    valign: 'middle'
+                
+                Spinner:
+                    id: theme_spinner
+                    text: app.color_theme
+                    values: app.get_available_themes()
+                    size_hint_x: 0.85
+                    font_size: int(16 * app.fontscale)
+                    on_text: app.update_color_theme(self.text)
+                    text_autoupdate: True
+                    option_cls: Factory.ThemeSpinnerOption
+            
+            # Custom Theme Editor (only visible when custom theme is selected)
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: 120 if theme_spinner.text == 'custom' else 0
+                opacity: 1 if theme_spinner.text == 'custom' else 0
+                disabled: theme_spinner.text != 'custom'
+                spacing: 3
+                padding: [5, 5, 5, 5]
+                
+                Label:
+                    text: 'Custom Theme Colors:'
+                    font_size: int(14 * app.fontscale)
+                    halign: 'left'
+                    text_size: self.size
+                    size_hint_y: None
+                    height: 20
+                
+                GridLayout:
+                    cols: 8
+                    spacing: 5
+                    row_default_height: 28
+                    size_hint_y: None
+                    height: 60
+                    
+                    # Row 1: CH1, CH2, Background, Axes BG
+                    Label:
+                        text: 'CH1:'
+                        font_size: int(12 * app.fontscale)
+                        halign: 'right'
+                        text_size: self.size
+                        valign: 'middle'
+                    ColorPickerButton:
+                        id: custom_ch1_btn
+                        size_hint: None, None
+                        size: 30, 24
+                        color_key: 'ch1_color'
+                        color_value: app.get_custom_theme_color('ch1_color')
+                    
+                    Label:
+                        text: 'CH2:'
+                        font_size: int(12 * app.fontscale)
+                        halign: 'right'
+                        text_size: self.size
+                        valign: 'middle'
+                    ColorPickerButton:
+                        id: custom_ch2_btn
+                        size_hint: None, None
+                        size: 30, 24
+                        color_key: 'ch2_color'
+                        color_value: app.get_custom_theme_color('ch2_color')
+                    
+                    Label:
+                        text: 'BG:'
+                        font_size: int(12 * app.fontscale)
+                        halign: 'right'
+                        text_size: self.size
+                        valign: 'middle'
+                    ColorPickerButton:
+                        id: custom_bg_btn
+                        size_hint: None, None
+                        size: 30, 24
+                        color_key: 'plot_background'
+                        color_value: app.get_custom_theme_color('plot_background')
+                    
+                    Label:
+                        text: 'Axes BG:'
+                        font_size: int(12 * app.fontscale)
+                        halign: 'right'
+                        text_size: self.size
+                        valign: 'middle'
+                    ColorPickerButton:
+                        id: custom_axes_bg_btn
+                        size_hint: None, None
+                        size: 30, 24
+                        color_key: 'axes_background'
+                        color_value: app.get_custom_theme_color('axes_background')
+                    
+                    # Row 2: Axes, Grid, Gain, Phase
+                    Label:
+                        text: 'Axes:'
+                        font_size: int(12 * app.fontscale)
+                        halign: 'right'
+                        text_size: self.size
+                        valign: 'middle'
+                    ColorPickerButton:
+                        id: custom_axes_btn
+                        size_hint: None, None
+                        size: 30, 24
+                        color_key: 'axes_color'
+                        color_value: app.get_custom_theme_color('axes_color')
+                    
+                    Label:
+                        text: 'Grid:'
+                        font_size: int(12 * app.fontscale)
+                        halign: 'right'
+                        text_size: self.size
+                        valign: 'middle'
+                    ColorPickerButton:
+                        id: custom_grid_btn
+                        size_hint: None, None
+                        size: 30, 24
+                        color_key: 'grid_color'
+                        color_value: app.get_custom_theme_color('grid_color')
+                    
+                    Label:
+                        text: 'Gain:'
+                        font_size: int(12 * app.fontscale)
+                        halign: 'right'
+                        text_size: self.size
+                        valign: 'middle'
+                    ColorPickerButton:
+                        id: custom_gain_btn
+                        size_hint: None, None
+                        size: 30, 24
+                        color_key: 'gain_color'
+                        color_value: app.get_custom_theme_color('gain_color')
+                    
+                    Label:
+                        text: 'Phase:'
+                        font_size: int(12 * app.fontscale)
+                        halign: 'right'
+                        text_size: self.size
+                        valign: 'middle'
+                    ColorPickerButton:
+                        id: custom_phase_btn
+                        size_hint: None, None
+                        size: 30, 24
+                        color_key: 'phase_color'
+                        color_value: app.get_custom_theme_color('phase_color')
+                
+                Button:
+                    text: 'Reset to Defaults'
+                    font_size: int(12 * app.fontscale)
+                    size_hint: None, None
+                    size: 120, 28
+                    pos_hint: {'center_x': 0.5}
+                    on_release: app.reset_custom_theme_and_refresh(root)
+
         # Separator
         Widget:
             size_hint_y: None
@@ -1023,7 +1202,7 @@
                 size: 1.1 * self.texture_size[0], self.texture_size[1]
                 font_size: 0.08 * root.scope_plot.size[1]
                 halign: 'left'
-                text: '[b][color=#FFFF00]CH1[/color]\n[color=#00FFFF]CH2[/color][/b]'
+                text: '[b]CH1\nCH2[/b]'
                 markup: True
                 multiline: True
                 bkgnd_color: 0.03125, 0.03125, 0.03125, 0
@@ -1310,7 +1489,7 @@
                 ImageButton:
                     id: offset_waveform_load_button
                     size_hint_y: 1 / 9
-                    source: kivy_resources.resource_find('load.png')
+                    source: kivy_resources.resource_find('save.png')
                     on_release:
                         app.save_dialog_visible = True
                         Factory.OffsetWaveformLoadDialog().open()

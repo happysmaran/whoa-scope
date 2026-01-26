@@ -2,6 +2,7 @@
 This repository is a fork of the O-Scope software by [Bradley Minch](https://github.com/bminch/O-Scope). It includes several small tweaks and improvements over the original O-Scope software.
 
 ## Current changes
+* Custom color themes (light mode, etc. Feel free to request more!)
 * Increased window size on launch
 * Improved voltmeter text formatting
 * Choice of fonts and font size (Atkinson Hyperlegible, OpenDyslexic)
@@ -9,7 +10,6 @@ This repository is a fork of the O-Scope software by [Bradley Minch](https://git
 * Changes made by Brad after the public build was released (incl. improved USB connection management)
 
 ## Planned Changes
-* Custom color themes (light mode, rainbow, etc.)
 * Use native file picker when saving data files
 * Customizeable hotkeys
 * Add text to icons/arrows describing what they do

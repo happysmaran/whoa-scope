@@ -5,7 +5,7 @@ Config.set('graphics', 'width', 1200)
 Config.set('graphics', 'height', 800)
 
 # Initialize settings early to get preferences before UI loads
-from settings_manager import settings_manager, AVAILABLE_FONTS, get_font_path
+from settings_manager import settings_manager, AVAILABLE_FONTS, get_font_path, COLOR_THEMES, AVAILABLE_THEMES
 settings_manager.initialize()
 
 # Register all available fonts with Kivy
@@ -25,6 +25,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.button import Button
 from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.spinner import SpinnerOption
 from kivy.uix.label import Label
 from kivy.uix.image import Image
 from kivy.uix.widget import Widget
@@ -107,8 +108,148 @@ class SettingsDialog(Popup):
         return False
 
 
-# Register SettingsDialog with Factory before loading kv file
+class ThemeSpinnerOption(SpinnerOption):
+    """Custom spinner option that shows theme name with color swatches inline."""
+    
+    def __init__(self, **kwargs):
+        super(ThemeSpinnerOption, self).__init__(**kwargs)
+        self.halign = 'left'
+        self.valign = 'middle'
+        self.bind(size=self._update_text_size)
+        self.bind(text=self._rebuild_with_swatches)
+        Clock.schedule_once(self._rebuild_with_swatches, 0)
+    
+    def _update_text_size(self, *args):
+        self.text_size = (self.width * 0.4, self.height)
+    
+    def _rebuild_with_swatches(self, *args):
+        """Redraw with color swatches after the text."""
+        # Draw color swatches on the canvas
+        self.canvas.after.clear()
+        
+        theme_name = self.text
+        if theme_name in COLOR_THEMES:
+            theme = COLOR_THEMES[theme_name]
+        elif theme_name == 'custom':
+            theme = settings_manager.custom_theme or COLOR_THEMES['default']
+        else:
+            return
+        
+        # Create color swatches
+        colors_to_show = ['ch1_color', 'ch2_color', 'axes_background', 'grid_color']
+        swatch_width = 18
+        swatch_height = self.height * 0.6
+        start_x = self.x + self.width * 0.45
+        y = self.y + (self.height - swatch_height) / 2
+        
+        with self.canvas.after:
+            for i, color_key in enumerate(colors_to_show):
+                color_value = theme.get(color_key, '#FFFFFF')
+                if isinstance(color_value, str):
+                    Color(*get_color_from_hex(color_value))
+                else:
+                    Color(*color_value)
+                Rectangle(pos=(start_x + i * (swatch_width + 2), y), size=(swatch_width, swatch_height))
+                Color(0.5, 0.5, 0.5, 1)
+                Line(rectangle=[start_x + i * (swatch_width + 2), y, swatch_width, swatch_height], width=1)
+    
+    def on_size(self, *args):
+        self._rebuild_with_swatches()
+    
+    def on_pos(self, *args):
+        self._rebuild_with_swatches()
+
+
+class ThemePreviewWidget(BoxLayout):
+    """Widget that shows color swatches for a theme preview."""
+    theme_name = StringProperty('')
+    
+    def __init__(self, **kwargs):
+        super(ThemePreviewWidget, self).__init__(**kwargs)
+        self.orientation = 'horizontal'
+        self.spacing = 2
+        self.padding = [2, 2, 2, 2]
+    
+    def on_theme_name(self, instance, value):
+        """Update swatches when theme name changes."""
+        self.clear_widgets()
+        if value and value in COLOR_THEMES:
+            theme = COLOR_THEMES[value]
+        elif value == 'custom':
+            theme = settings_manager.custom_theme or COLOR_THEMES['default']
+        else:
+            return
+        
+        # Create color swatches for CH1, CH2, background, and grid
+        colors_to_show = [
+            ('ch1_color', 'CH1'),
+            ('ch2_color', 'CH2'),
+            ('axes_background', 'BG'),
+            ('grid_color', 'Grid'),
+        ]
+        
+        for color_key, label in colors_to_show:
+            color_value = theme.get(color_key, '#FFFFFF')
+            swatch = Widget(size_hint=(None, 1), width=20)
+            with swatch.canvas:
+                if isinstance(color_value, str):
+                    Color(*get_color_from_hex(color_value))
+                else:
+                    Color(*color_value)
+                swatch._rect = Rectangle(pos=swatch.pos, size=swatch.size)
+            swatch.bind(pos=self._update_rect, size=self._update_rect)
+            self.add_widget(swatch)
+    
+    def _update_rect(self, instance, value):
+        if hasattr(instance, '_rect'):
+            instance._rect.pos = instance.pos
+            instance._rect.size = instance.size
+
+
+class ColorPickerButton(ButtonBehavior, Widget):
+    """A button that shows a color and opens a color picker when clicked."""
+    color_value = StringProperty('#FFFFFF')
+    color_key = StringProperty('')
+    
+    def __init__(self, **kwargs):
+        super(ColorPickerButton, self).__init__(**kwargs)
+        self._update_color()
+    
+    def on_color_value(self, instance, value):
+        self._update_color()
+    
+    def _update_color(self):
+        self.canvas.clear()
+        with self.canvas:
+            if self.color_value.startswith('#'):
+                Color(*get_color_from_hex(self.color_value))
+            else:
+                Color(1, 1, 1, 1)
+            self._rect = Rectangle(pos=self.pos, size=self.size)
+            Color(0.5, 0.5, 0.5, 1)
+            Line(rectangle=[self.pos[0], self.pos[1], self.size[0], self.size[1]], width=1)
+        self.bind(pos=self._update_rect, size=self._update_rect)
+    
+    def _update_rect(self, *args):
+        if hasattr(self, '_rect'):
+            self._rect.pos = self.pos
+            self._rect.size = self.size
+    
+    def on_release(self):
+        """Open color picker popup."""
+        if self.color_key:
+            app.open_color_picker(self.color_key, self.color_value, self._on_color_selected)
+    
+    def _on_color_selected(self, color_hex):
+        """Called when a color is selected from the picker."""
+        self.color_value = color_hex
+
+
+# Register custom widgets with Factory before loading kv file
 Factory.register('SettingsDialog', cls=SettingsDialog)
+Factory.register('ThemeSpinnerOption', cls=ThemeSpinnerOption)
+Factory.register('ThemePreviewWidget', cls=ThemePreviewWidget)
+Factory.register('ColorPickerButton', cls=ColorPickerButton)
 
 Builder.load_file('scopeui.kv')
 
@@ -125,38 +266,61 @@ class DisplayToggleButton(ToggleButton):
 
     bkgnd_color = ListProperty([0.345, 0.345, 0.345])
 
+    def __init__(self, **kwargs):
+        super(DisplayToggleButton, self).__init__(**kwargs)
+        theme = settings_manager.get_current_theme()
+        self.bkgnd_color = theme['button_normal']
+
     def on_state(self, widget, value):
+        theme = settings_manager.get_current_theme()
         if self.disabled:
             if value == 'down':
-                self.bkgnd_color = [0.196, 0.643, 0.808]
+                self.bkgnd_color = theme['button_pressed']
             else:
-                self.bkgnd_color = [0.345, 0.345, 0.345]
+                self.bkgnd_color = theme['button_normal']
         else:
-            self.bkgnd_color = [0.345, 0.345, 0.345]
+            self.bkgnd_color = theme['button_normal']
 
 class ImageButton(ButtonBehavior, Image):
 
     bkgnd_color = ListProperty([0.345, 0.345, 0.345])
 
+    def __init__(self, **kwargs):
+        super(ImageButton, self).__init__(**kwargs)
+        theme = settings_manager.get_current_theme()
+        self.bkgnd_color = theme['button_normal']
+
     def on_state(self, widget, value):
+        theme = settings_manager.get_current_theme()
         if value == 'down':
-            self.bkgnd_color = [0.196, 0.643, 0.808]
+            self.bkgnd_color = theme['button_pressed']
         else:
-            self.bkgnd_color = [0.345, 0.345, 0.345]
+            self.bkgnd_color = theme['button_normal']
 
 class AltImageButton(ButtonBehavior, Image):
 
     bkgnd_color = ListProperty([0.03125, 0.03125, 0.03125, 0.8])
 
+    def __init__(self, **kwargs):
+        super(AltImageButton, self).__init__(**kwargs)
+        theme = settings_manager.get_current_theme()
+        self.bkgnd_color = theme['panel_background']
+
 class ImageToggleButton(ToggleButtonBehavior, Image):
 
     bkgnd_color = ListProperty([0.345, 0.345, 0.345])
 
+    def __init__(self, **kwargs):
+        super(ImageToggleButton, self).__init__(**kwargs)
+        theme = settings_manager.get_current_theme()
+        self.bkgnd_color = theme['button_normal']
+
     def on_state(self, widget, value):
+        theme = settings_manager.get_current_theme()
         if value == 'down':
-            self.bkgnd_color = [0.196, 0.643, 0.808]
+            self.bkgnd_color = theme['button_pressed']
         else:
-            self.bkgnd_color = [0.345, 0.345, 0.345]
+            self.bkgnd_color = theme['button_normal']
 
 class AltImageToggleButton(ToggleButtonBehavior, Image):
 
@@ -178,11 +342,18 @@ class ImageSpinButton(ButtonBehavior, Image):
     sources = ListProperty([])
     actions = ListProperty([])
 
+    def __init__(self, **kwargs):
+        super(ImageSpinButton, self).__init__(**kwargs)
+        theme = settings_manager.get_current_theme()
+        self.bkgnd_color = theme['button_normal']
+        
+
     def on_state(self, widget, value):
+        theme = settings_manager.get_current_theme()
         if value == 'down':
-            self.bkgnd_color = [0.196, 0.643, 0.808]
+            self.bkgnd_color = theme['button_pressed']
         else:
-            self.bkgnd_color = [0.345, 0.345, 0.345]
+            self.bkgnd_color = theme['button_normal']
 
     def on_release(self):
         self.index += 1
@@ -201,11 +372,17 @@ class LabelSpinButton(ButtonBehavior, Label):
     texts = ListProperty([])
     actions = ListProperty([])
 
+    def __init__(self, **kwargs):
+        super(LabelSpinButton, self).__init__(**kwargs)
+        theme = settings_manager.get_current_theme()
+        self.bkgnd_color = theme['button_normal']
+
     def on_state(self, widget, value):
+        theme = settings_manager.get_current_theme()
         if value == 'down':
-            self.bkgnd_color = [0.196, 0.643, 0.808]
+            self.bkgnd_color = theme['button_pressed']
         else:
-            self.bkgnd_color = [0.345, 0.345, 0.345]
+            self.bkgnd_color = theme['button_normal']
 
     def on_release(self):
         self.index += 1
@@ -302,16 +479,23 @@ class ScopePlot(Plot):
         self.h_cursor1 = 0.
         self.h_cursor2 = 0.
 
-        self.yaxes['left'].color = '#FFFFFF'
+        # Get theme colors
+        theme = settings_manager.get_current_theme()
+        
+        # Add CH1/CH2 colors to the plot's color dict for curve rendering
+        self.colors['ch1'] = theme['ch1_color']
+        self.colors['ch2'] = theme['ch2_color']
+
+        self.yaxes['left'].color = theme['axes_color']
         self.yaxes['left'].yaxis_mode = 'linear'
         self.yaxes['left'].ylimits_mode = 'manual'
         self.yaxes['left'].ylim = [0., 5.]
 
-        self.yaxes['CH1'] = self.y_axis(name = 'CH1', color = '#FFFF00', units = 'V', yaxis_mode = 'linear', ylimits_mode = 'manual', ylim = [-10., 10.])
+        self.yaxes['CH1'] = self.y_axis(name = 'CH1', color = theme['ch1_color'], units = 'V', yaxis_mode = 'linear', ylimits_mode = 'manual', ylim = [-10., 10.])
         self.yaxes['CH1'].v_cursor1 = 0.
         self.yaxes['CH1'].v_cursor2 = 0.
 
-        self.yaxes['CH2'] = self.y_axis(name = 'CH2', color = '#00FFFF', units = 'V', yaxis_mode = 'linear', ylimits_mode = 'manual', ylim = [-10., 10.])
+        self.yaxes['CH2'] = self.y_axis(name = 'CH2', color = theme['ch2_color'], units = 'V', yaxis_mode = 'linear', ylimits_mode = 'manual', ylim = [-10., 10.])
         self.yaxes['CH2'].v_cursor1 = 0.
         self.yaxes['CH2'].v_cursor2 = 0.
 
@@ -320,11 +504,11 @@ class ScopePlot(Plot):
         self.ch1_display = u'CH1:\xB110V'
         self.ch2_display = u'CH2:\xB110V'
 
-        self.curves['CH1'] = self.curve(name = 'CH1', yaxis = 'CH1', curve_color = 'y', curve_style = '-')
-        self.curves['CH2'] = self.curve(name = 'CH2', yaxis = 'CH2', curve_color = 'c', curve_style = '-')
+        self.curves['CH1'] = self.curve(name = 'CH1', yaxis = 'CH1', curve_color = 'ch1', curve_style = '-')
+        self.curves['CH2'] = self.curve(name = 'CH2', yaxis = 'CH2', curve_color = 'ch2', curve_style = '-')
 
-        self.configure(background = '#080808', axes_background = '#000000', 
-                       axes_color = '#FFFFFF', grid_color = '#585858', 
+        self.configure(background = theme['plot_background'], axes_background = theme['axes_background'], 
+                       axes_color = theme['axes_color'], grid_color = theme['grid_color'], 
                        fontsize = int(18 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
 
         self.refresh_plot()
@@ -542,7 +726,8 @@ class ScopePlot(Plot):
                 ch1_rms = math.sqrt(float(np.sum((ch1 - ch1_mean) ** 2)) / num_samples)
                 ch2_rms = math.sqrt(float(np.sum((ch2 - ch2_mean) ** 2)) / num_samples)
 
-                base_meter_text = '[b][color=#FFFF00]{}V[/color]\n[color=#00FFFF]{}V[/color][/b]'
+                theme = settings_manager.get_current_theme()
+                base_meter_text = '[b][color={}]{{}}V[/color]\n[color={}]{{}}V[/color][/b]'.format(theme['ch1_color'], theme['ch2_color'])
                 ch1_str = app.num2str(ch1_rms if app.root.scope.meter_ch1rms else ch1_mean, 4, positive_sign=True, trailing_zeros=True)
                 ch2_str = app.num2str(ch2_rms if app.root.scope.meter_ch2rms else ch2_mean, 4, positive_sign=True, trailing_zeros=True)
                 app.root.scope.meter_label.text = base_meter_text.format(ch1_str, ch2_str)
@@ -981,7 +1166,10 @@ class ScopeXYPlot(Plot):
 
         self.CONTROL_PT_THRESHOLD = 60.
 
-        self.xaxis_color = '#00FFFF'
+        # Get theme colors
+        theme = settings_manager.get_current_theme()
+
+        self.xaxis_color = theme['ch2_color']
         self.xaxis_mode = 'linear'
         self.xlimits_mode = 'manual'
         self.xlim = [-10., 10.]
@@ -991,7 +1179,7 @@ class ScopeXYPlot(Plot):
         self.h_cursor1 = 0.
         self.h_cursor2 = 0.
 
-        self.yaxes['left'].color = '#FFFF00'
+        self.yaxes['left'].color = theme['ch1_color']
         self.yaxes['left'].yaxis_mode = 'linear'
         self.yaxes['left'].ylimits_mode = 'manual'
         self.yaxes['left'].ylim = [-10., 10.]
@@ -1002,11 +1190,14 @@ class ScopeXYPlot(Plot):
         self.yaxes['left'].v_cursor2 = 0.
 
         self.left_yaxis = 'left'
+        
+        # Add XY color (blend of CH1/CH2) to colors dict
+        self.colors['xy'] = theme['phase_color']  # Use phase color (magenta-ish) for XY
 
-        self.curves['XY'] = self.curve(name = 'XY', yaxis = 'left', curve_color = 'm', curve_style = '-')
+        self.curves['XY'] = self.curve(name = 'XY', yaxis = 'left', curve_color = 'xy', curve_style = '-')
 
-        self.configure(background = '#080808', axes_background = '#000000', 
-                       axes_color = '#FFFFFF', grid_color = '#585858', 
+        self.configure(background = theme['plot_background'], axes_background = theme['axes_background'], 
+                       axes_color = theme['axes_color'], grid_color = theme['grid_color'], 
                        fontsize = int(18 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
 
         self.refresh_plot()
@@ -1103,15 +1294,16 @@ class ScopeXYPlot(Plot):
 
     def swap_axes(self):
         self.ch1_vs_ch2 = not self.ch1_vs_ch2
+        theme = settings_manager.get_current_theme()
         if self.ch1_vs_ch2:
-            self.xaxis_color = '#00FFFF'
+            self.xaxis_color = theme['ch2_color']
             self.xlabel_value = 'CH2 (V)'
-            self.yaxes['left'].color = '#FFFF00'
+            self.yaxes['left'].color = theme['ch1_color']
             self.yaxes['left'].ylabel_value = 'CH1 (V)'
         else:
-            self.xaxis_color = '#FFFF00'
+            self.xaxis_color = theme['ch1_color']
             self.xlabel_value = 'CH1 (V)'
-            self.yaxes['left'].color = '#00FFFF'
+            self.yaxes['left'].color = theme['ch2_color']
             self.yaxes['left'].ylabel_value = 'CH2 (V)'
         self.xlim, self.yaxes['left'].ylim = self.yaxes['left'].ylim, self.xlim
         self.h_cursor1, self.yaxes['left'].v_cursor1 = self.yaxes['left'].v_cursor1, self.h_cursor1
@@ -1357,7 +1549,14 @@ class WavegenPlot(Plot):
         self.xmax = 1e-3
         self.xaxis_units = 's'
 
-        self.yaxes['left'].color = '#FFFFFF'
+        # Get theme colors
+        theme = settings_manager.get_current_theme()
+        
+        # Add waveform color to the colors dict for curve rendering
+        self.colors['waveform'] = theme['waveform_color']
+        self.control_point_color = theme['waveform_color']
+
+        self.yaxes['left'].color = theme['axes_color']
         self.yaxes['left'].units = 'V'
         self.yaxes['left'].yaxis_mode = 'linear'
         self.yaxes['left'].ylimits_mode = 'manual'
@@ -1367,8 +1566,8 @@ class WavegenPlot(Plot):
 
         self.generate_preview()
 
-        self.configure(background = '#080808', axes_background = '#000000', 
-                       axes_color = '#FFFFFF', grid_color = '#585858', 
+        self.configure(background = theme['plot_background'], axes_background = theme['axes_background'], 
+                       axes_color = theme['axes_color'], grid_color = theme['grid_color'], 
                        fontsize = int(18 * app.fontscale), font = app.fontname, linear_minor_ticks = 'on')
 
         self.refresh_plot()
@@ -1435,7 +1634,7 @@ class WavegenPlot(Plot):
         where_under = np.where(v < self.MIN_OFFSET)[0]
         v[where_under] = self.MIN_OFFSET
 
-        self.curves['WG'] = self.curve(name = 'WG', curve_color = 'g', curve_style = '-', points_x = [t], points_y = [v])
+        self.curves['WG'] = self.curve(name = 'WG', curve_color = 'waveform', curve_style = '-', points_x = [t], points_y = [v])
         if self.shape == 'DC':
             self.yaxes['left'].ylabel_value = 'WG: DC, offset = {}V'.format(app.num2str(self.offset, 4))
         else:
@@ -1756,7 +1955,13 @@ class OffsetWaveformPlot(Plot):
         self.xmax = 1.
         self.xlabel_value = ''
 
-        self.yaxes['left'].color = '#FFFFFF'
+        # Get theme colors
+        theme = settings_manager.get_current_theme()
+        
+        # Add waveform color to the colors dict for curve rendering
+        self.colors['waveform'] = theme['waveform_color']
+
+        self.yaxes['left'].color = theme['axes_color']
         self.yaxes['left'].units = 'V'
         self.yaxes['left'].yaxis_mode = 'linear'
         self.yaxes['left'].ylimits_mode = 'manual'
@@ -1767,10 +1972,10 @@ class OffsetWaveformPlot(Plot):
 
         self.left_yaxis = 'left'
 
-        self.curves['OffsetWaveform'] = self.curve(name = 'OffsetWaveform', yaxis = 'left', curve_color = 'g', curve_style = '-')
+        self.curves['OffsetWaveform'] = self.curve(name = 'OffsetWaveform', yaxis = 'left', curve_color = 'waveform', curve_style = '-')
 
-        self.configure(background = '#080808', axes_background = '#000000', 
-                       axes_color = '#FFFFFF', grid_color = '#585858', 
+        self.configure(background = theme['plot_background'], axes_background = theme['axes_background'], 
+                       axes_color = theme['axes_color'], grid_color = theme['grid_color'], 
                        fontsize = int(18 * app.fontscale), font = app.fontname, marker_radius = 6., linear_minor_ticks = 'on')
 
         self.refresh_plot()
@@ -1907,7 +2112,10 @@ class BodePlot(Plot):
         self.xmax = 1e5
         self.xlabel_value = 'Frequency (Hz)'
 
-        self.yaxes['left'].color = '#FF00FF'
+        # Get theme colors
+        theme = settings_manager.get_current_theme()
+
+        self.yaxes['left'].color = theme['gain_color']
         self.yaxes['left'].yaxis_mode = 'linear'
         self.yaxes['left'].ylimits_mode = 'manual'
         self.yaxes['left'].ylim = [-40., 10.]
@@ -1917,7 +2125,7 @@ class BodePlot(Plot):
 
         self.yaxes['right'] = self.y_axis()
 
-        self.yaxes['right'].color = '#00FFFF'
+        self.yaxes['right'].color = theme['phase_color']
         self.yaxes['right'].yaxis_mode = 'linear'
         self.yaxes['right'].ylimits_mode = 'manual'
         self.yaxes['right'].ylim = [-90., 0.]
@@ -1928,8 +2136,8 @@ class BodePlot(Plot):
         self.left_yaxis = 'left'
         self.right_yaxis = 'right'
 
-        self.configure(background = '#080808', axes_background = '#000000', 
-                       axes_color = '#FFFFFF', grid_color = '#585858', 
+        self.configure(background = theme['plot_background'], axes_background = theme['axes_background'], 
+                       axes_color = theme['axes_color'], grid_color = theme['grid_color'], 
                        fontsize = int(18 * app.fontscale), font = app.fontname, marker_radius = 6., linear_minor_ticks = 'on')
 
         self.refresh_plot()
@@ -2582,6 +2790,9 @@ class ScopeRoot(Screen):
             self.sync_offset_waveform()
 
             self.digital_control_panel.sync_controls()
+            
+            # Update meter label colors from theme
+            app.update_meter_label_colors()
         except:
             pass
 
@@ -3376,6 +3587,9 @@ class MainApp(App):
     # Font settings as Kivy properties for proper binding in KV
     fontname = StringProperty('Roboto')
     fontscale = NumericProperty(1.0)  # Scale factor (1.0 = 100%)
+    
+    # Color theme property
+    color_theme = StringProperty('default')
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -3393,6 +3607,9 @@ class MainApp(App):
         
         # Load launch maximized setting
         self.launch_maximized = settings_manager.launch_maximized
+        
+        # Load color theme setting
+        self.color_theme = settings_manager.color_theme
         
         # Settings dialog visibility and update job
         self.settings_dialog_visible = False
@@ -3481,6 +3698,281 @@ class MainApp(App):
         """Update launch maximized setting and save."""
         self.launch_maximized = value
         settings_manager.launch_maximized = value
+    
+    def get_available_themes(self):
+        """Get list of available theme names for the spinner."""
+        return AVAILABLE_THEMES
+    
+    def get_theme_display_name(self, theme_key):
+        """Get the display name for a theme key."""
+        return COLOR_THEMES.get(theme_key, {}).get('name', theme_key)
+    
+    def get_theme_preview_color(self, theme_name, color_key):
+        """Get a color value for theme preview swatches."""
+        if theme_name == 'custom':
+            custom_theme = settings_manager.custom_theme
+            if custom_theme and color_key in custom_theme:
+                return custom_theme[color_key]
+        if theme_name in COLOR_THEMES:
+            return COLOR_THEMES[theme_name].get(color_key, '#FFFFFF')
+        return '#FFFFFF'
+    
+    def get_color_from_hex(self, color_value):
+        """Convert hex color to RGBA tuple for canvas use."""
+        if isinstance(color_value, str) and color_value.startswith('#'):
+            return get_color_from_hex(color_value)
+        elif isinstance(color_value, (list, tuple)):
+            return color_value
+        return (1, 1, 1, 1)
+    
+    def reset_custom_theme_and_refresh(self, dialog):
+        """Reset custom theme and refresh the color picker buttons in the dialog."""
+        self.reset_custom_theme()
+        # Update the color picker buttons if they exist
+        try:
+            if hasattr(dialog, 'ids'):
+                for color_key in ['ch1_color', 'ch2_color', 'plot_background', 'axes_background', 
+                                  'axes_color', 'grid_color', 'gain_color', 'phase_color']:
+                    btn_id = f'custom_{color_key.replace("_color", "").replace("plot_", "").replace("axes_", "")}_btn'
+                    if btn_id in dialog.ids:
+                        dialog.ids[btn_id].color_value = self.get_custom_theme_color(color_key)
+        except Exception as e:
+            print(f"Error refreshing color buttons: {e}")
+    
+    def get_current_theme(self):
+        """Get the current theme's color dictionary."""
+        return settings_manager.get_current_theme()
+    
+    def update_color_theme(self, theme_name):
+        """Update color theme and save to settings."""
+        self.color_theme = theme_name
+        settings_manager.color_theme = theme_name
+        # Apply theme to plots
+        self.apply_color_theme()
+    
+    def apply_color_theme(self):
+        """Apply the current color theme to all plots and UI elements."""
+        theme = self.get_current_theme()
+        
+        # Apply to plots if they exist
+        if hasattr(self, 'root') and self.root is not None:
+            try:
+                scope = self.root.scope
+                # Update ScopePlot colors
+                scope.scope_plot.colors['ch1'] = theme['ch1_color']
+                scope.scope_plot.colors['ch2'] = theme['ch2_color']
+                scope.scope_plot.yaxes['CH1'].color = theme['ch1_color']
+                scope.scope_plot.yaxes['CH2'].color = theme['ch2_color']
+                scope.scope_plot.configure(
+                    background=theme['plot_background'],
+                    axes_background=theme['axes_background'],
+                    axes_color=theme['axes_color'],
+                    grid_color=theme['grid_color']
+                )
+                scope.scope_plot.refresh_plot()
+                
+                # Update ScopeXYPlot colors
+                scope.scope_xyplot.colors['xy'] = theme['phase_color']
+                if scope.scope_xyplot.ch1_vs_ch2:
+                    scope.scope_xyplot.xaxis_color = theme['ch2_color']
+                    scope.scope_xyplot.yaxes['left'].color = theme['ch1_color']
+                else:
+                    scope.scope_xyplot.xaxis_color = theme['ch1_color']
+                    scope.scope_xyplot.yaxes['left'].color = theme['ch2_color']
+                scope.scope_xyplot.configure(
+                    background=theme['plot_background'],
+                    axes_background=theme['axes_background'],
+                    axes_color=theme['axes_color'],
+                    grid_color=theme['grid_color']
+                )
+                scope.scope_xyplot.refresh_plot()
+                
+                # Update WavegenPlot colors
+                scope.wavegen_plot.colors['waveform'] = theme['waveform_color']
+                scope.wavegen_plot.control_point_color = theme['waveform_color']
+                scope.wavegen_plot.configure(
+                    background=theme['plot_background'],
+                    axes_background=theme['axes_background'],
+                    axes_color=theme['axes_color'],
+                    grid_color=theme['grid_color']
+                )
+                scope.wavegen_plot.refresh_plot()
+                
+                # Update OffsetWaveformPlot colors
+                scope.offset_waveform_plot.colors['waveform'] = theme['waveform_color']
+                scope.offset_waveform_plot.configure(
+                    background=theme['plot_background'],
+                    axes_background=theme['axes_background'],
+                    axes_color=theme['axes_color'],
+                    grid_color=theme['grid_color']
+                )
+                scope.offset_waveform_plot.refresh_plot()
+                
+                # Update BodePlot colors
+                bode = self.root.bode
+                bode.bode_plot.yaxes['left'].color = theme['gain_color']
+                bode.bode_plot.yaxes['right'].color = theme['phase_color']
+                bode.bode_plot.configure(
+                    background=theme['plot_background'],
+                    axes_background=theme['axes_background'],
+                    axes_color=theme['axes_color'],
+                    grid_color=theme['grid_color']
+                )
+                bode.bode_plot.refresh_plot()
+                
+                # Update meter label colors in scope panel
+                self.update_meter_label_colors()
+                
+                # Update all button colors
+                self.update_button_colors()
+                
+            except Exception as e:
+                print(f"Error applying color theme: {e}")
+    
+    def update_button_colors(self):
+        """Update all button background colors based on theme."""
+        theme = self.get_current_theme()
+        button_normal = theme['button_normal']
+        button_pressed = theme['button_pressed']
+        
+        def update_widget_colors(widget):
+            """Recursively update button colors in widget tree."""
+            # Check if this widget has bkgnd_color and is a button type
+            # Only update widgets with 3-element RGB colors (not 4-element RGBA like AltImageButton)
+            if hasattr(widget, 'bkgnd_color') and hasattr(widget, 'state') and len(widget.bkgnd_color) == 3:
+                # It's a button-like widget with RGB color
+                if widget.state == 'down':
+                    widget.bkgnd_color = button_pressed
+                else:
+                    widget.bkgnd_color = button_normal
+            
+            # Recurse into children
+            if hasattr(widget, 'children'):
+                for child in widget.children:
+                    update_widget_colors(child)
+        
+        try:
+            if self.root:
+                update_widget_colors(self.root)
+        except Exception:
+            pass  # Widget tree may not be ready
+    
+    def update_meter_label_colors(self):
+        """Update meter label colors based on theme."""
+        theme = self.get_current_theme()
+        try:
+            # Update the default meter label text with themed colors
+            meter_text = '[b][color={}]CH1[/color]\n[color={}]CH2[/color][/b]'.format(
+                theme['ch1_color'], theme['ch2_color'])
+            self.root.scope.meter_label.text = meter_text
+        except Exception:
+            pass  # Widget may not exist yet
+    
+    def get_custom_theme_color(self, color_key):
+        """Get a color value from the custom theme."""
+        custom_theme = settings_manager.custom_theme
+        if custom_theme and color_key in custom_theme:
+            return custom_theme[color_key]
+        return COLOR_THEMES['default'].get(color_key, '#FFFFFF')
+    
+    def update_custom_theme_color(self, color_key, color_value):
+        """Update a single color in the custom theme and apply if active."""
+        settings_manager.update_custom_theme_color(color_key, color_value)
+        # If custom theme is active, apply the change
+        if self.color_theme == 'custom':
+            self.apply_color_theme()
+    
+    def reset_custom_theme(self):
+        """Reset the custom theme to default values."""
+        settings_manager.reset_custom_theme()
+        if self.color_theme == 'custom':
+            self.apply_color_theme()
+    
+    def open_color_picker(self, color_key, current_color, callback):
+        """Open a color picker popup for selecting a color."""
+        from kivy.uix.colorpicker import ColorPicker
+        from kivy.uix.popup import Popup
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.button import Button
+        from kivy.uix.label import Label
+        
+        content = BoxLayout(orientation='vertical', spacing=10, padding=10)
+        
+        color_picker = ColorPicker()
+        # Convert hex to RGBA
+        if current_color.startswith('#'):
+            rgba = get_color_from_hex(current_color)
+            color_picker.color = rgba
+        
+        color_picker.foreground_color = (0, 0, 0, 1)
+        
+        content.add_widget(color_picker)
+        
+        # # Selected color preview section
+        # preview_box = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10, padding=[10, 5, 10, 5])
+        # preview_label = Label(text='Selected Color:', size_hint_x=0.3, font_size=int(14 * self.fontscale))
+        # preview_box.add_widget(preview_label)
+        
+        # # Color preview widget
+        # color_preview = Widget(size_hint_x=0.7)
+        # with color_preview.canvas:
+        #     Color(*color_picker.color)
+        #     preview_rect = Rectangle(pos=color_preview.pos, size=color_preview.size)
+        #     Color(0.5, 0.5, 0.5, 1)
+        #     preview_border = Line(rectangle=[color_preview.pos[0], color_preview.pos[1], color_preview.size[0], color_preview.size[1]], width=1.5)
+        
+        # def update_preview_rect(*args):
+        #     preview_rect.pos = color_preview.pos
+        #     preview_rect.size = color_preview.size
+        #     preview_border.rectangle = [color_preview.pos[0], color_preview.pos[1], color_preview.size[0], color_preview.size[1]]
+        
+        # color_preview.bind(pos=update_preview_rect, size=update_preview_rect)
+        # preview_box.add_widget(color_preview)
+        # content.add_widget(preview_box)
+        
+        # # Update preview when color changes
+        # def update_preview_color(instance, value):
+        #     color_preview.canvas.clear()
+        #     with color_preview.canvas:
+        #         Color(*value)
+        #         rect = Rectangle(pos=color_preview.pos, size=color_preview.size)
+        #         Color(0.5, 0.5, 0.5, 1)
+        #         Line(rectangle=[color_preview.pos[0], color_preview.pos[1], color_preview.size[0], color_preview.size[1]], width=1.5)
+        
+        # color_picker.bind(color=update_preview_color)
+        
+        # Buttons
+        buttons = BoxLayout(size_hint_y=None, height=50, spacing=10)
+        
+        cancel_btn = Button(text='Cancel', font_size=int(16 * self.fontscale))
+        ok_btn = Button(text='OK', font_size=int(16 * self.fontscale))
+        
+        buttons.add_widget(cancel_btn)
+        buttons.add_widget(ok_btn)
+        content.add_widget(buttons)
+        
+        popup = Popup(
+            title=f'Select Color for {color_key.replace("_", " ").title()}',
+            content=content,
+            size_hint=(0.8, 0.9),
+            auto_dismiss=False
+        )
+        
+        def on_cancel(instance):
+            popup.dismiss()
+        
+        def on_ok(instance):
+            # Convert RGBA to hex
+            r, g, b, a = color_picker.color
+            color_hex = '#{:02X}{:02X}{:02X}'.format(int(r*255), int(g*255), int(b*255))
+            callback(color_hex)
+            self.update_custom_theme_color(color_key, color_hex)
+            popup.dismiss()
+        
+        cancel_btn.bind(on_release=on_cancel)
+        ok_btn.bind(on_release=on_ok)
+        
+        popup.open()
     
     def get_settings_directory(self):
         """Get the settings directory path for display."""
