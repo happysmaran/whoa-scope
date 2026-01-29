@@ -240,14 +240,14 @@
 
     BoxLayout:
         orientation: 'vertical'
-        padding: [20, 20, 20, 20]
+        padding: [10, 10, 20, 20]
         spacing: 15
 
         # Version Info Section
         BoxLayout:
             orientation: 'vertical'
             size_hint_y: None
-            height: 60
+            height: 40
             
             Label:
                 text: '[b]About[/b]'
@@ -276,6 +276,40 @@
                 Rectangle:
                     pos: self.pos
                     size: self.size
+        
+        # Window Settings Section
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: 70
+            
+            Label:
+                text: '[b]Window Settings[/b]'
+                font_size: int(18 * app.fontscale)
+                markup: True
+                halign: 'left'
+                text_size: self.size
+                size_hint_y: None
+                height: 30
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 40
+                spacing: 10
+                
+                CheckBox:
+                    id: maximized_checkbox
+                    size_hint_x: None
+                    active: app.launch_maximized
+                    on_active: app.update_launch_maximized(self.active)
+                
+                Label:
+                    text: 'Launch maximized on startup'
+                    font_size: int(16 * app.fontscale)
+                    halign: 'left'
+                    text_size: self.size
+                    valign: 'middle'
 
         # Font Settings Section
         BoxLayout:
@@ -388,40 +422,7 @@
                     text_size: self.size
                     valign: 'middle'
 
-        # Window Settings Section
-        BoxLayout:
-            orientation: 'vertical'
-            size_hint_y: None
-            height: 80
-            
-            Label:
-                text: '[b]Window Settings[/b]'
-                font_size: int(18 * app.fontscale)
-                markup: True
-                halign: 'left'
-                text_size: self.size
-                size_hint_y: None
-                height: 30
-            
-            BoxLayout:
-                orientation: 'horizontal'
-                size_hint_y: None
-                height: 40
-                spacing: 10
-                
-                CheckBox:
-                    id: maximized_checkbox
-                    size_hint_x: None
-                    width: 40
-                    active: app.launch_maximized
-                    on_active: app.update_launch_maximized(self.active)
-                
-                Label:
-                    text: 'Launch maximized on startup'
-                    font_size: int(16 * app.fontscale)
-                    halign: 'left'
-                    text_size: self.size
-                    valign: 'middle'
+        
 
         # Color Theme Section
         BoxLayout:
@@ -1271,6 +1272,9 @@
                 normal_source: kivy_resources.resource_find('down.png')
                 down_source: kivy_resources.resource_find('up.png')
                 source: self.normal_source
+                tooltip_text: 'Toggle Voltage Meter'
+                caption: 'Meter'
+                caption_position: 'right'
                 on_state: root.toggle_meter()
 
         FloatLayout:
@@ -1515,9 +1519,15 @@
                         on_press: wavegen_plot.decrease_frequency()
                         tooltip_text: 'Decrease Wave Frequency'
 
+                ImageButton:
+                    size_hint_y: 1 / 9
+                    source: kivy_resources.resource_find('home.png')
+                    on_release: root.sync_scope_to_wavegen()
+                    tooltip_text: 'Sync scope view and sampling rate to match wavegen period'
+
                 Slider:
                     id: offset_adj_slider
-                    size_hint_y: 4 / 9
+                    size_hint_y: 3 / 9
                     orientation: 'vertical'
                     value: 512
                     min: 0
@@ -1533,6 +1543,8 @@
                 down_source: kivy_resources.resource_find('left.png')
                 source: self.normal_source
                 on_state: root.toggle_wavegen()
+                caption: 'WG'
+                caption_position: 'below'
                 tooltip_text: 'Toggle Waveform Generator'
 
         FloatLayout:

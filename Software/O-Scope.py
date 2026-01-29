@@ -3,6 +3,7 @@ from kivy.config import Config
 Config.set('kivy', 'exit_on_escape', '0')
 Config.set('graphics', 'width', 1200)
 Config.set('graphics', 'height', 800)
+Config.set('input', 'mouse', 'mouse,multitouch_on_demand')  # Disable red touch dots on right-click
 
 # Initialize settings early to get preferences before UI loads
 from settings_manager import settings_manager, AVAILABLE_FONTS, get_font_path, COLOR_THEMES, AVAILABLE_THEMES
@@ -3311,6 +3312,33 @@ class ScopeRoot(Screen):
 
     def toggle_xy_v_cursors(self):
         self.scope_xyplot.toggle_v_cursors()
+
+    def sync_scope_to_wavegen(self):
+        """Sync scope plot view and sampling rate to match wavegen period."""
+        frequency = self.wavegen_plot.frequency
+        period = 1.0 / frequency
+        
+        # Calculate sampling interval so buffer (1500 samples) shows ~3 periods
+        # This gives good resolution while showing context around trigger
+        num_samples = app.dev.SCOPE_BUFFER_SIZE // 2  # 1500 samples per channel
+        desired_periods_in_buffer = 3.0
+        ideal_interval = (desired_periods_in_buffer * period) / num_samples
+        
+        # Set the sampling interval if connected
+        if app.dev.connected:
+            try:
+                app.dev.set_period(ideal_interval)
+                # Update the actual sampling interval from device
+                actual_interval = app.dev.sampling_interval
+            except:
+                app.disconnect_from_oscope()
+                return
+        else:
+            actual_interval = ideal_interval
+        
+        # Set the scope plot view to show one period centered at trigger (t=0)
+        self.scope_plot.xlim = [-period / 2, period / 2]
+        self.scope_plot.refresh_plot()
 
     def sync_preview(self):
         if not app.dev.connected:
