@@ -1277,7 +1277,8 @@
                 caption_position: 'right'
                 on_state: root.toggle_meter()
 
-        FloatLayout:
+        BoxLayout:
+            orientation: 'vertical'
             id: scope_toolbar
             canvas.before:
                 Color:
@@ -1288,7 +1289,7 @@
 
             size_hint: 0.06, 1
             x_hint: 1
-            pos_hint: { 'x': self.x_hint, 'y': 0 }
+            pos_hint: { 'x': 0.94, 'y': 0 }
 
             BoxLayout:
                 orientation: 'vertical'
@@ -1390,17 +1391,6 @@
                     on_release:
                         app.settings_dialog_visible = True
                         Factory.SettingsDialog().open()
-
-            AltImageToggleButton:
-                size_hint_x: None
-                size_hint_y: 1
-                pos_hint: { 'right': 0, 'center_y' : 0.5 }
-                width: 30
-                normal_source: kivy_resources.resource_find('left.png')
-                down_source: kivy_resources.resource_find('right.png')
-                source: self.normal_source
-                tooltip_text: 'Toggle Toolbar'
-                on_state: root.toggle_toolbar()
 
         FloatLayout:
             id: xyplot

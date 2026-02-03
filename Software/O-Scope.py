@@ -3593,14 +3593,7 @@ class BodeRoot(Screen):
             self.bode_toolbar_visible = True
 
     def toggle_bode_controls(self):
-        if self.bode_controls_visible:
-            anim = Animation(right_hint = 0, duration = 0.3)
-            anim.start(self.bode_controls)
-            self.bode_controls_visible = False
-        else:
-            anim = Animation(right_hint = 0.6, duration = 0.3)
-            anim.start(self.bode_controls)
-            self.bode_controls_visible = True
+        pass
 
     def on_keyboard_down(self, keyboard, keycode, text, modifiers):
         code, key = keycode
