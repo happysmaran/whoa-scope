@@ -39,6 +39,7 @@ from kivy.factory import Factory
 from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.utils import platform
+from kivy.metrics import dp
 
 from plyer import filechooser
 
@@ -591,6 +592,14 @@ class LinearSlider(BoxLayout):
     label_text = StringProperty('')
     units = StringProperty('')
 
+    def update_value_from_text(self, text):
+        """Safely updates the slider value from text input. You never know if an error arises!"""
+        try:
+            new_val = float(text)
+            self.value = max(self.minimum, min(self.maximum, new_val))
+        except ValueError:
+            pass
+
 class LogarithmicSlider(BoxLayout):
 
     minimum = NumericProperty(1.)
@@ -599,6 +608,14 @@ class LogarithmicSlider(BoxLayout):
     value = NumericProperty()
     label_text = StringProperty('')
     units = StringProperty('')
+
+    def update_value_from_text(self, text):
+        """Safely updates the slider value from text input. You never know if an error arises!"""
+        try:
+            new_val = float(text)
+            self.value = max(self.minimum, min(self.maximum, new_val))
+        except ValueError:
+            pass
 
     def nearest_one_two_five(self, x):
         exponent = math.floor(x)
@@ -1766,7 +1783,7 @@ class WavegenPlot(Plot):
 
     def draw_background(self):
         self.canvas.add(Color(*get_color_from_hex(self.canvas_background_color + 'CD')))
-#        self.canvas.add(Rectangle(pos = [self.canvas_left, self.canvas_bottom], size = [self.canvas_width, self.canvas_height]))
+        #  self.canvas.add(Rectangle(pos = [self.canvas_left, self.canvas_bottom], size = [self.canvas_width, self.canvas_height]))
         self.canvas.add(Rectangle(pos = [self.canvas_left, self.canvas_bottom], size = [self.canvas_width, self.axes_bottom - self.canvas_bottom]))
         self.canvas.add(Rectangle(pos = [self.canvas_left, self.axes_top], size = [self.canvas_width, self.canvas_bottom + self.canvas_height - self.axes_top]))
         self.canvas.add(Rectangle(pos = [self.canvas_left, self.axes_bottom], size = [self.axes_left - self.canvas_left, self.axes_height]))
@@ -1858,54 +1875,44 @@ class WavegenPlot(Plot):
         self.update_preview()
         self.refresh_plot()
 
-    def decrease_frequency(self):
-        foo = math.log10(self.frequency)
-        bar = math.floor(foo)
-        foobar = foo - bar
-        if foobar < 0.5 * math.log10(2.001):
-            self.frequency = 0.5 * math.pow(10., bar)
-        elif foobar < 0.5 * math.log10(2.001 * 5.001):
-            self.frequency = math.pow(10., bar)
-        elif foobar < 0.5 * math.log10(5.001 * 10.001):
-            self.frequency = 2. * math.pow(10., bar)
-        else:
-            self.frequency = 5. * math.pow(10., bar)
+    def increase_frequency(self):
+        app = App.get_running_app()
+        if self.frequency >= self.MAX_FREQUENCY:
+            return
 
-        if self.frequency < self.MIN_FREQUENCY:
-            self.frequency = self.MIN_FREQUENCY
-        if self.frequency > self.MAX_FREQUENCY:
-            self.frequency = self.MAX_FREQUENCY
+        log_f = math.log10(max(self.frequency, 1e-10))
+        log_f += app.wavegen_snap_step
+        
+        snapped_log = app.nearest_one_two_five(log_f)
+        new_freq = 10 ** snapped_log
+
+        self.frequency = min(max(new_freq, self.MIN_FREQUENCY), self.MAX_FREQUENCY)
 
         self.xlim = [0., 1. / self.frequency]
         self.xmin = self.xlim[0]
         self.xmax = self.xlim[1]
-
+        
         app.root.scope.set_frequency(self.frequency)
         self.update_preview()
         self.refresh_plot()
 
-    def increase_frequency(self):
-        foo = math.log10(self.frequency)
-        bar = math.floor(foo)
-        foobar = foo - bar
-        if foobar < 0.5 * math.log10(2.001):
-            self.frequency = 2. * math.pow(10., bar)
-        elif foobar < 0.5 * math.log10(2.001 * 5.001):
-            self.frequency = 5. * math.pow(10., bar)
-        elif foobar < 0.5 * math.log10(5.001 * 10.001):
-            self.frequency = 10. * math.pow(10., bar)
-        else:
-            self.frequency = 20. * math.pow(10., bar)
+    def decrease_frequency(self):
+        app = App.get_running_app()
+        if self.frequency <= self.MIN_FREQUENCY:
+            return
 
-        if self.frequency < self.MIN_FREQUENCY:
-            self.frequency = self.MIN_FREQUENCY
-        if self.frequency > self.MAX_FREQUENCY:
-            self.frequency = self.MAX_FREQUENCY
+        log_f = math.log10(max(self.frequency, 1e-10))
+        log_f -= app.wavegen_snap_step
+        
+        snapped_log = app.nearest_one_two_five(log_f)
+        new_freq = 10 ** snapped_log
+
+        self.frequency = min(max(new_freq, self.MIN_FREQUENCY), self.MAX_FREQUENCY)
 
         self.xlim = [0., 1. / self.frequency]
         self.xmin = self.xlim[0]
         self.xmax = self.xlim[1]
-
+        
         app.root.scope.set_frequency(self.frequency)
         self.update_preview()
         self.refresh_plot()
@@ -1960,8 +1967,12 @@ class WavegenPlot(Plot):
         except ValueError:
             return
 
+        # Use the dynamic step size from the app settings
+        step = app.wavegen_snap_step
+
         if self.dragging_offset_control_pt and (i == 0):
-            self.offset = self.from_canvas_y(self.to_canvas_y(self.offset) + touch.pos[1] - self.touch_positions[i][1])
+            val = self.from_canvas_y(self.to_canvas_y(self.offset) + touch.pos[1] - self.touch_positions[i][1])
+            self.offset = round(val / step) * step
             if self.offset < self.MIN_OFFSET:
                 self.offset = self.MIN_OFFSET
             if self.offset > self.MAX_OFFSET:
@@ -1971,12 +1982,17 @@ class WavegenPlot(Plot):
             self.refresh_plot()
 
         if self.dragging_amp_control_pt and (i == 0):
-            self.amplitude = self.from_canvas_y(self.to_canvas_y(self.offset + self.amplitude) + touch.pos[1] - self.touch_positions[i][1]) - self.offset
+            # Vertical move for amplitude
+            val_amp = self.from_canvas_y(self.to_canvas_y(self.offset + self.amplitude) + touch.pos[1] - self.touch_positions[i][1]) - self.offset
+            self.amplitude = round(val_amp / step) * step
             if self.amplitude < self.MIN_AMPLITUDE:
                 self.amplitude = self.MIN_AMPLITUDE
             if self.amplitude > self.MAX_AMPLITUDE:
                 self.amplitude = self.MAX_AMPLITUDE
+            
+            # Horizontal move for frequency
             t_peak = self.from_canvas_x(self.to_canvas_x(0.25 / self.frequency) + touch.pos[0] - self.touch_positions[i][0])
+            self.frequency = round(t_peak / step) * step
             if t_peak < 0.025 * self.xlim[1]:
                 t_peak = 0.025 * self.xlim[1]
             if t_peak > self.xlim[1]:
@@ -1986,6 +2002,7 @@ class WavegenPlot(Plot):
                 self.frequency = self.MIN_FREQUENCY
             if self.frequency > self.MAX_FREQUENCY:
                 self.frequency = self.MAX_FREQUENCY
+            
             app.root.scope.set_amplitude(self.amplitude)
             app.root.scope.set_frequency(self.frequency)
             self.update_preview()
@@ -2000,7 +2017,8 @@ class WavegenPlot(Plot):
                 else:
                     self.drag_direction = 'VERTICAL'
             if self.drag_direction == 'VERTICAL':
-                self.amplitude = self.from_canvas_y(self.to_canvas_y(self.offset + self.amplitude) + touch.pos[1] - self.touch_positions[i][1]) - self.offset
+                val_amp = self.from_canvas_y(self.to_canvas_y(self.offset + self.amplitude) + touch.pos[1] - self.touch_positions[i][1]) - self.offset
+                self.amplitude = round(val_amp / step) * step
                 if self.amplitude < self.MIN_AMPLITUDE:
                     self.amplitude = self.MIN_AMPLITUDE
                 if self.amplitude > self.MAX_AMPLITUDE:
@@ -3791,6 +3809,9 @@ class MainApp(App):
     # Color theme property
     color_theme = StringProperty('default')
 
+    # Snap step thing (i dont know where to put it)
+    wavegen_snap_step = NumericProperty(0.5)
+
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
         # Settings manager already initialized at module load time for font config
@@ -4179,6 +4200,22 @@ class MainApp(App):
         ok_btn.bind(on_release=on_ok)
         
         popup.open()
+
+    # yes this is in the wrong place
+    # no, i will not move it
+    def nearest_one_two_five(self, x):
+        exponent = math.floor(x)
+        mantissa = x - exponent
+        if mantissa < math.log10(math.sqrt(2.)):
+            mantissa = 0.
+        elif mantissa < math.log10(math.sqrt(10.)):
+            mantissa = math.log10(2.)
+        elif mantissa < math.log10(math.sqrt(50.)):
+            mantissa = math.log10(5.)
+        else:
+            mantissa = 0.
+            exponent += 1.
+        return exponent + mantissa
     
     def get_settings_directory(self):
         """Get the settings directory path for display."""
@@ -4392,4 +4429,3 @@ if __name__ == '__main__':
     app = MainApp()
     oscope.app = app
     app.run()
-
