@@ -1976,11 +1976,17 @@ class WavegenPlot(Plot):
 
         # Use the dynamic step size from the app settings
         step = app.wavegen_snap_step
+        snap_enabled = app.root.scope.wavegen_snap_button.state == 'down'
 
         if self.dragging_offset_control_pt and (i == 0):
             dy = self.touch_net_movements[i][1] + (touch.pos[1] - self.touch_positions[i][1])
             val = self.from_canvas_y(self.to_canvas_y(self.drag_start_offset) + dy)
-            self.offset = round(val / step) * step
+            
+            if snap_enabled:
+                self.offset = round(val / step) * step
+            else:
+                self.offset = val
+                
             if self.offset < self.MIN_OFFSET:
                 self.offset = self.MIN_OFFSET
             if self.offset > self.MAX_OFFSET:
@@ -1996,7 +2002,11 @@ class WavegenPlot(Plot):
             val_total = self.from_canvas_y(start_y_canvas + dy)
             val_amp = val_total - self.offset
             
-            self.amplitude = round(val_amp / step) * step
+            if snap_enabled:
+                self.amplitude = round(val_amp / step) * step
+            else:
+                self.amplitude = val_amp
+
             if self.amplitude < self.MIN_AMPLITUDE:
                 self.amplitude = self.MIN_AMPLITUDE
             if self.amplitude > self.MAX_AMPLITUDE:
@@ -2011,6 +2021,8 @@ class WavegenPlot(Plot):
                 t_peak = 0.025 * self.xlim[1]
             if t_peak > self.xlim[1]:
                 t_peak = self.xlim[1]
+            
+            # Continuous adjustment if snapping is disabled.
             self.frequency = 0.25 / t_peak
             if self.frequency < self.MIN_FREQUENCY:
                 self.frequency = self.MIN_FREQUENCY
@@ -2036,7 +2048,11 @@ class WavegenPlot(Plot):
                 val_total = self.from_canvas_y(start_y_canvas + dy)
                 val_amp = val_total - self.offset
                 
-                self.amplitude = round(val_amp / step) * step
+                if snap_enabled:
+                    self.amplitude = round(val_amp / step) * step
+                else:
+                    self.amplitude = val_amp
+                    
                 if self.amplitude < self.MIN_AMPLITUDE:
                     self.amplitude = self.MIN_AMPLITUDE
                 if self.amplitude > self.MAX_AMPLITUDE:
@@ -2059,10 +2075,6 @@ class WavegenPlot(Plot):
                 app.root.scope.set_frequency(self.frequency)
             self.update_preview()
             self.refresh_plot()
-
-        self.touch_net_movements[i][0] += touch.pos[0] - self.touch_positions[i][0]
-        self.touch_net_movements[i][1] += touch.pos[1] - self.touch_positions[i][1]
-        self.touch_positions[i] = touch.pos
 
     def on_touch_up(self, touch):
         if not app.root.scope.wavegen_visible:

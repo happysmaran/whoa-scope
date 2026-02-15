@@ -1244,6 +1244,7 @@
     xy_v_cursors_button: xy_v_cursors_button
     wavegen: wavegen
     wavegen_plot: wavegen_plot
+    wavegen_snap_button: wavegen_snap_button
     dc_button: dc_button
     sin_button: sin_button
     square_button: square_button
@@ -1575,9 +1576,17 @@
                     on_release: root.sync_scope_to_wavegen()
                     tooltip_text: 'Sync scope view and sampling rate to match wavegen period'
 
+                ImageToggleButton:
+                    id: wavegen_snap_button
+                    # How in the world is there a magnet icon???
+                    source: kivy_resources.resource_find('magnet_alt.png')
+                    size_hint_y: 1 / 9
+                    state: 'down'
+                    tooltip_text: 'Toggle Wavegen Snapping'
+                
                 Slider:
                     id: offset_adj_slider
-                    size_hint_y: 3 / 9
+                    size_hint_y: 2 / 9
                     orientation: 'vertical'
                     value: 512
                     min: 0
