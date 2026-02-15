@@ -1943,13 +1943,20 @@ class WavegenPlot(Plot):
         if (self.num_touches == 1) and ((touch.pos[0] - self.axes_left) ** 2 + (touch.pos[1] - self.to_canvas_y(self.offset)) ** 2 <= self.CONTROL_PT_THRESHOLD ** 2):
             self.looking_for_gesture = False
             self.dragging_offset_control_pt = True
+            self.drag_start_offset = self.offset
         elif (self.shape != 'DC') and ((touch.pos[0] - self.to_canvas_x(0.25 / self.frequency)) ** 2 + (touch.pos[1] - self.to_canvas_y(self.offset + self.amplitude)) ** 2 <= self.CONTROL_PT_THRESHOLD ** 2):
             if self.num_touches == 1:
                 self.looking_for_gesture = False
                 self.dragging_amp_control_pt = True
+                self.drag_start_amplitude = self.amplitude
+                self.drag_start_frequency = self.frequency
+                self.drag_start_offset = self.offset
             elif self.num_touches == 2:
                 self.looking_for_gesture = False
                 self.dragging_amp_control_pt_h_xor_v = True
+                self.drag_start_amplitude = self.amplitude
+                self.drag_start_frequency = self.frequency
+                self.drag_start_offset = self.offset
 
     def on_touch_move(self, touch):
         if not app.root.scope.wavegen_visible:
@@ -1971,7 +1978,8 @@ class WavegenPlot(Plot):
         step = app.wavegen_snap_step
 
         if self.dragging_offset_control_pt and (i == 0):
-            val = self.from_canvas_y(self.to_canvas_y(self.offset) + touch.pos[1] - self.touch_positions[i][1])
+            dy = self.touch_net_movements[i][1] + (touch.pos[1] - self.touch_positions[i][1])
+            val = self.from_canvas_y(self.to_canvas_y(self.drag_start_offset) + dy)
             self.offset = round(val / step) * step
             if self.offset < self.MIN_OFFSET:
                 self.offset = self.MIN_OFFSET
@@ -1983,7 +1991,11 @@ class WavegenPlot(Plot):
 
         if self.dragging_amp_control_pt and (i == 0):
             # Vertical move for amplitude
-            val_amp = self.from_canvas_y(self.to_canvas_y(self.offset + self.amplitude) + touch.pos[1] - self.touch_positions[i][1]) - self.offset
+            dy = self.touch_net_movements[i][1] + (touch.pos[1] - self.touch_positions[i][1])
+            start_y_canvas = self.to_canvas_y(self.drag_start_offset + self.drag_start_amplitude)
+            val_total = self.from_canvas_y(start_y_canvas + dy)
+            val_amp = val_total - self.offset
+            
             self.amplitude = round(val_amp / step) * step
             if self.amplitude < self.MIN_AMPLITUDE:
                 self.amplitude = self.MIN_AMPLITUDE
@@ -1991,8 +2003,10 @@ class WavegenPlot(Plot):
                 self.amplitude = self.MAX_AMPLITUDE
             
             # Horizontal move for frequency
-            t_peak = self.from_canvas_x(self.to_canvas_x(0.25 / self.frequency) + touch.pos[0] - self.touch_positions[i][0])
-            self.frequency = round(t_peak / step) * step
+            dx = self.touch_net_movements[i][0] + (touch.pos[0] - self.touch_positions[i][0])
+            start_x_canvas = self.to_canvas_x(0.25 / self.drag_start_frequency)
+            t_peak = self.from_canvas_x(start_x_canvas + dx)
+            
             if t_peak < 0.025 * self.xlim[1]:
                 t_peak = 0.025 * self.xlim[1]
             if t_peak > self.xlim[1]:
@@ -2017,7 +2031,11 @@ class WavegenPlot(Plot):
                 else:
                     self.drag_direction = 'VERTICAL'
             if self.drag_direction == 'VERTICAL':
-                val_amp = self.from_canvas_y(self.to_canvas_y(self.offset + self.amplitude) + touch.pos[1] - self.touch_positions[i][1]) - self.offset
+                dy = self.touch_net_movements[i][1] + (touch.pos[1] - self.touch_positions[i][1])
+                start_y_canvas = self.to_canvas_y(self.drag_start_offset + self.drag_start_amplitude)
+                val_total = self.from_canvas_y(start_y_canvas + dy)
+                val_amp = val_total - self.offset
+                
                 self.amplitude = round(val_amp / step) * step
                 if self.amplitude < self.MIN_AMPLITUDE:
                     self.amplitude = self.MIN_AMPLITUDE
@@ -2025,7 +2043,10 @@ class WavegenPlot(Plot):
                     self.amplitude = self.MAX_AMPLITUDE
                 app.root.scope.set_amplitude(self.amplitude)
             else:
-                t_peak = self.from_canvas_x(self.to_canvas_x(0.25 / self.frequency) + touch.pos[0] - self.touch_positions[i][0])
+                dx = self.touch_net_movements[i][0] + (touch.pos[0] - self.touch_positions[i][0])
+                start_x_canvas = self.to_canvas_x(0.25 / self.drag_start_frequency)
+                t_peak = self.from_canvas_x(start_x_canvas + dx)
+
                 if t_peak < 0.025 * self.xlim[1]:
                     t_peak = 0.025 * self.xlim[1]
                 if t_peak > self.xlim[1]:
