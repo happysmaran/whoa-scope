@@ -1284,6 +1284,7 @@
             source: kivy_resources.resource_find('up.png')
             tooltip_text: 'Go to Bode Plot'
             on_release:
+                app.hide_all_tooltips()
                 app.root.transition.direction = 'up'
                 app.root.current = 'bode'
 
@@ -1582,7 +1583,7 @@
                     source: kivy_resources.resource_find('magnet_alt.png')
                     size_hint_y: 1 / 9
                     state: 'down'
-                    tooltip_text: 'Toggle Wavegen Snapping'
+                    tooltip_text: 'Toggle Snapping to Voltages'
                 
                 Slider:
                     id: offset_adj_slider
@@ -1830,6 +1831,7 @@
             source: kivy_resources.resource_find('down.png')
             tooltip_text: 'Go to Oscilloscope'
             on_release:
+                app.hide_all_tooltips()
                 app.root.transition.direction = 'down'
                 app.root.current = 'scope'
 

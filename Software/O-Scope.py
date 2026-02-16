@@ -126,6 +126,14 @@ class TooltipBehavior:
                 self._show_tooltip, settings_manager.tooltip_delay
             )
     
+    def hide_and_cancel_tooltip(self):
+        """Hide tooltip when changing screens to prevent it from lingering.
+        This should be called by parent screens before switching.
+        """
+        print(f"Hiding tooltip for {self}, was active: {self._is_hovering}")
+        self._cancel_tooltip()
+        self._hide_tooltip()
+    
     def _cancel_tooltip(self):
         """Cancel any scheduled tooltip show."""
         if self._tooltip_show_event:
@@ -4353,6 +4361,11 @@ class MainApp(App):
             return selection
         else:
             return pathlib.Path(selection).name
+    
+    def hide_all_tooltips(self):
+        for widget in self.root.walk():
+            if isinstance(widget, TooltipBehavior):
+                widget.hide_and_cancel_tooltip()
 
     def open_save_waveform_dialog(self):
         filechooser.save_file(
